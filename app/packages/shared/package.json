@@ -1,0 +1,15 @@
+{
+  "name": "@app/shared",
+  "version": "1.0.0",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "argon2-browser": "^1.18.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

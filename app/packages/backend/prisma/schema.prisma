@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationType {
+  TEAMS
+  PERSONAL
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INVITED
+  SUSPENDED
+}
+
+enum MfaType {
+  NONE
+  TOTP
+  EMAIL
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+model Organization {
+  id          String           @id @default(uuid())
+  name        String
+  type        OrganizationType
+  mfaEnforced Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  users       User[]
+  invitations Invitation[]
+  secrets     Secret[]
+  policies    PasswordPolicy[]
+}
+
+model User {
+  id                  String     @id @default(uuid())
+  organizationId      String
+  email               String     @unique
+  loginPassword       String     // Argon2 hash
+  publicKey           String     // RSA public key
+  encryptedPrivateKey String     // RSA private key encrypted with AES-256-GCM
+  role                Role       @default(USER)
+  status              UserStatus @default(ACTIVE)
+  
+  // MFA
+  mfaType             MfaType    @default(NONE)
+  mfaSecret           String?    // Nullable TOTP secret
+
+  // Password Reset
+  passwordResetToken  String?
+  passwordResetExpires DateTime?
+
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  organization        Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  refreshTokens       RefreshToken[]
+  secrets             Secret[]
+}
+
+model RefreshToken {
+  id              String   @id @default(uuid())
+  tokenHash       String   @unique
+  userId          String
+  familyId        String   // Links rotated tokens together
+  isRevoked       Boolean  @default(false)
+  replacedByToken String?  // Stores the new tokenHash if rotated
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model Invitation {
+  id              String       @id @default(uuid())
+  email           String       @unique
+  organizationId  String
+  role            Role         @default(USER)
+  tokenHash       String       @unique
+  status          InviteStatus @default(PENDING)
+  expiresAt       DateTime
+  createdAt       DateTime     @default(now())
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+enum TemplateType {
+  WEBSITE
+  SERVER
+  UNIX
+  WINDOWS
+  LICENSE
+  CUSTOM
+}
+
+model Secret {
+  id                   String       @id @default(uuid())
+  ownerId              String
+  organizationId       String
+  templateType         TemplateType
+  name                 String
+  domain               String?
+  encryptedData        String       // Ciphertext payload (base64)
+  iv                   String       // Initialization Vector (base64)
+  encryptedItemKey     String       // AES ItemKey encrypted with owner's RSA Public Key (base64)
+  isPersonal           Boolean      @default(false)
+  accessControlEnabled Boolean      @default(false)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  owner                User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model PasswordPolicy {
+  id               String       @id @default(uuid())
+  organizationId   String
+  name             String
+  isDefault        Boolean      @default(false)
+  minLength        Int          @default(12)
+  maxLength        Int          @default(128)
+  requireUppercase Boolean      @default(true)
+  requireLowercase Boolean      @default(true)
+  requireNumbers   Boolean      @default(true)
+  requireSymbols   Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
