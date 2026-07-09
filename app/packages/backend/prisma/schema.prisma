@@ -54,6 +54,14 @@ enum RequestStatus {
   VOIDED
 }
 
+enum EmergencyAccessStatus {
+  INACTIVE
+  PENDING
+  ACTIVE
+  EXPIRED
+  DENIED
+}
+
 model Organization {
   id          String           @id @default(uuid())
   name        String
@@ -101,6 +109,8 @@ model User {
   accessApprovals     AccessApproval[]
   accessControlApprover AccessControlApprover[]
   accessControlExcluded AccessControlExcludedUser[]
+  emergencyGrantsGiven  EmergencyAccessGrant[] @relation("EmergencyOwner")
+  emergencyGrantsReceived EmergencyAccessGrant[] @relation("EmergencyContact")
 }
 
 model RefreshToken {
@@ -349,4 +359,23 @@ model AccessApproval {
   approver       User          @relation(fields: [approverId], references: [id], onDelete: Cascade)
 
   @@unique([requestId, approverId])
+}
+
+model EmergencyAccessGrant {
+  id                  String   @id @default(uuid())
+  ownerId             String
+  contactId           String
+  sessionValidityHours Int
+  waitingPeriodHours  Int
+  encryptedPrivateKey String
+  status              EmergencyAccessStatus @default(INACTIVE)
+  waitingPeriodUntil  DateTime?
+  sessionExpiresAt    DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  owner               User     @relation("EmergencyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  contact             User     @relation("EmergencyContact", fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, contactId])
 }

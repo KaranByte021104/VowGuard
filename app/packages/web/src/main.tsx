@@ -11,6 +11,8 @@ import { ImportSecrets } from './pages/ImportSecrets';
 import { Sharing } from './pages/Sharing';
 import { AuthGuard } from './components/AuthGuard';
 import { Approvals } from './pages/Approvals';
+import { EmergencyAccess } from './pages/EmergencyAccess';
+import { EmergencyVault } from './pages/EmergencyVault';
 import './index.css';
 import App from './App.tsx';
 
@@ -42,6 +44,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="import" element={<ImportSecrets />} />
             <Route path="sharing" element={<Sharing />} />
             <Route path="approvals" element={<Approvals />} />
+            <Route path="emergency" element={<EmergencyAccess />} />
+            <Route path="emergency/:ownerId" element={<EmergencyVault />} />
             <Route path="reporting" element={<PlaceholderPage title="Audit & Reporting" />} />
             <Route path="admin" element={<PlaceholderPage title="Administration" />} />
           </Route>

@@ -16,6 +16,7 @@ import { GroupsModule } from './groups/groups.module';
 import { UsersModule } from './users/users.module';
 import { SharesModule } from './shares/shares.module';
 import { AccessControlModule } from './access-control/access-control.module';
+import { EmergencyAccessModule } from './emergency-access/emergency-access.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { AccessControlModule } from './access-control/access-control.module';
     GroupsModule,
     SharesModule,
     AccessControlModule,
+    EmergencyAccessModule,
   ],
   controllers: [AppController],
   providers: [AppService],

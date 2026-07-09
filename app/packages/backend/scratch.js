@@ -1,3 +1,14 @@
 const { PrismaClient } = require('@prisma/client');
-const p = new PrismaClient();
-p.accessRequest.findMany().then(r => console.log(JSON.stringify(r, null, 2))).catch(console.error).finally(() => p.$disconnect());
+const prisma = new PrismaClient();
+
+async function main() {
+  const secrets = await prisma.secret.findMany({ include: { owner: true } });
+  console.log(secrets.map(s => ({
+    id: s.id,
+    name: s.name,
+    ownerEmail: s.owner.email,
+    ownerId: s.owner.id
+  })));
+}
+
+main().finally(() => prisma.$disconnect());

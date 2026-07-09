@@ -5,11 +5,12 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   message?: string;
-  mode?: 'confirm' | 'prompt';
+  mode?: 'confirm' | 'prompt' | 'custom';
   promptPlaceholder?: string;
   confirmText?: string;
   confirmColor?: 'red' | 'primary';
-  onConfirm: (value?: string) => void;
+  onConfirm?: (value?: string) => void;
+  children?: React.ReactNode;
 }
 
 export function Modal({ 
@@ -21,14 +22,15 @@ export function Modal({
   promptPlaceholder, 
   confirmText = 'Confirm', 
   confirmColor = 'primary',
-  onConfirm 
+  onConfirm,
+  children
 }: ModalProps) {
   const [inputValue, setInputValue] = useState('');
 
   if (!isOpen) return null;
 
   const handleConfirm = () => {
-    onConfirm(mode === 'prompt' ? inputValue : undefined);
+    if (onConfirm) onConfirm(mode === 'prompt' ? inputValue : undefined);
     setInputValue('');
     onClose();
   };
@@ -63,14 +65,18 @@ export function Modal({
           />
         )}
 
-        <div className="flex justify-end gap-3 mt-6">
-          <button onClick={handleClose} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors">
-            Cancel
-          </button>
-          <button onClick={handleConfirm} className={`px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors ${colorClasses}`}>
-            {confirmText}
-          </button>
-        </div>
+        {children}
+
+        {mode !== 'custom' && !children && (
+          <div className="flex justify-end gap-3 mt-6">
+            <button onClick={handleClose} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors">
+              Cancel
+            </button>
+            <button onClick={handleConfirm} className={`px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors ${colorClasses}`}>
+              {confirmText}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

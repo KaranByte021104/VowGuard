@@ -18,6 +18,7 @@ export function Navigation() {
     { name: 'Secrets', path: '/secrets', icon: Shield },
     { name: 'Approvals', path: '/approvals', icon: ShieldAlert },
     { name: 'Sharing', path: '/sharing', icon: Users },
+    { name: 'Emergency', path: '/emergency', icon: ShieldAlert },
     { name: 'Reporting', path: '/reporting', icon: Activity },
     { name: 'Admin', path: '/admin', icon: Settings },
   ];
