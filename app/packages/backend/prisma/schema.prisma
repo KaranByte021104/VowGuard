@@ -76,6 +76,11 @@ model Organization {
   policies    PasswordPolicy[]
   folders     Folder[]
   userGroups  UserGroup[]
+  samlApps    SAMLApp[]
+
+  // Optional keys for SAML Identity Provider
+  samlPrivateKey  String?
+  samlCertificate String?
 }
 
 model User {
@@ -109,8 +114,36 @@ model User {
   accessApprovals     AccessApproval[]
   accessControlApprover AccessControlApprover[]
   accessControlExcluded AccessControlExcludedUser[]
-  emergencyGrantsGiven  EmergencyAccessGrant[] @relation("EmergencyOwner")
+  emergencyGrantsGiven    EmergencyAccessGrant[] @relation("EmergencyOwner")
   emergencyGrantsReceived EmergencyAccessGrant[] @relation("EmergencyContact")
+  samlAppAccesses         SAMLAppAccess[]
+}
+
+model SAMLApp {
+  id             String          @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  acsUrl         String          // Assertion Consumer Service URL
+  audienceUri    String          // Entity ID / Audience URI
+  isEnabled      Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  accesses       SAMLAppAccess[]
+}
+
+model SAMLAppAccess {
+  id        String   @id @default(uuid())
+  appId     String
+  userId    String
+  createdAt DateTime @default(now())
+
+  app       SAMLApp  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, userId])
 }
 
 model RefreshToken {

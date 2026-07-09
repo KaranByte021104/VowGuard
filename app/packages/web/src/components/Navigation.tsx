@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Shield, ShieldAlert, Users, Settings, Activity, LogOut } from 'lucide-react';
+import { Home, Shield, ShieldAlert, Users, Settings, Activity, LogOut, Server } from 'lucide-react';
 import { useSessionStore } from '../store/session';
 
 export function Navigation() {
@@ -18,8 +18,10 @@ export function Navigation() {
     { name: 'Secrets', path: '/secrets', icon: Shield },
     { name: 'Approvals', path: '/approvals', icon: ShieldAlert },
     { name: 'Sharing', path: '/sharing', icon: Users },
+    { name: 'Connected Apps', path: '/connected-apps', icon: Server },
     { name: 'Emergency', path: '/emergency', icon: ShieldAlert },
     { name: 'Reporting', path: '/reporting', icon: Activity },
+    { name: 'SSO Applications', path: '/admin/sso', icon: Server },
     { name: 'Admin', path: '/admin', icon: Settings },
   ];
 

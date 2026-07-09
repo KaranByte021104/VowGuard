@@ -17,6 +17,7 @@ import { UsersModule } from './users/users.module';
 import { SharesModule } from './shares/shares.module';
 import { AccessControlModule } from './access-control/access-control.module';
 import { EmergencyAccessModule } from './emergency-access/emergency-access.module';
+import { SsoModule } from './sso/sso.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { EmergencyAccessModule } from './emergency-access/emergency-access.modul
     SharesModule,
     AccessControlModule,
     EmergencyAccessModule,
+    SsoModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -13,6 +13,8 @@ import { AuthGuard } from './components/AuthGuard';
 import { Approvals } from './pages/Approvals';
 import { EmergencyAccess } from './pages/EmergencyAccess';
 import { EmergencyVault } from './pages/EmergencyVault';
+import { SsoDashboard } from './pages/SsoDashboard';
+import { ConnectedApps } from './pages/ConnectedApps';
 import './index.css';
 import App from './App.tsx';
 
@@ -46,8 +48,10 @@ createRoot(document.getElementById('root')!).render(
             <Route path="approvals" element={<Approvals />} />
             <Route path="emergency" element={<EmergencyAccess />} />
             <Route path="emergency/:ownerId" element={<EmergencyVault />} />
+            <Route path="connected-apps" element={<ConnectedApps />} />
             <Route path="reporting" element={<PlaceholderPage title="Audit & Reporting" />} />
             <Route path="admin" element={<PlaceholderPage title="Administration" />} />
+            <Route path="admin/sso" element={<SsoDashboard />} />
           </Route>
         </Routes>
       </BrowserRouter>
