@@ -8,6 +8,7 @@ import { SecretsList } from './pages/SecretsList';
 import { SecretDetail } from './pages/SecretDetail';
 import { AddSecret } from './pages/AddSecret';
 import { ImportSecrets } from './pages/ImportSecrets';
+import { Sharing } from './pages/Sharing';
 import { AuthGuard } from './components/AuthGuard';
 import './index.css';
 import App from './App.tsx';
@@ -38,7 +39,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="secrets/new" element={<AddSecret />} />
             <Route path="secrets/:id" element={<SecretDetail />} />
             <Route path="import" element={<ImportSecrets />} />
-            <Route path="sharing" element={<PlaceholderPage title="Secure Sharing" />} />
+            <Route path="sharing" element={<Sharing />} />
             <Route path="reporting" element={<PlaceholderPage title="Audit & Reporting" />} />
             <Route path="admin" element={<PlaceholderPage title="Administration" />} />
           </Route>

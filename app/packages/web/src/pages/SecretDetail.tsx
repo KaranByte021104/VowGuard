@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSessionStore } from '../store/session';
-import { decryptSecretPayload, decryptItemKeyWithPrivateKey, encryptSecretPayload } from '@app/shared/src/crypto';
-import { Eye, EyeOff, Save, Trash, ArrowLeft, Paperclip, History, Clock, Download } from 'lucide-react';
+import { decryptSecretPayload, decryptItemKeyWithPrivateKey, encryptSecretPayload, encryptItemKeyWithPublicKey, importPublicKey } from '@app/shared/src/crypto';
+import { Eye, EyeOff, Save, Trash, ArrowLeft, Paperclip, History, Clock, Download, Share2 } from 'lucide-react';
 import { PasswordGenerator } from '../components/PasswordGenerator';
 import { Modal } from '../components/Modal';
 import zxcvbn from 'zxcvbn';
@@ -11,7 +11,7 @@ import zxcvbn from 'zxcvbn';
 export function SecretDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { privateKey, publicKey } = useSessionStore();
+  const { privateKey, publicKey, user } = useSessionStore();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -25,11 +25,17 @@ export function SecretDetail() {
   const [showPassword, setShowPassword] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
   const [decryptionError, setDecryptionError] = useState('');
-  const [activeTab, setActiveTab] = useState<'details' | 'attachments' | 'history'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'attachments' | 'history' | 'sharing'>('details');
   const [attachments, setAttachments] = useState<any[]>([]);
   const [versions, setVersions] = useState<any[]>([]);
   const [decryptedVersions, setDecryptedVersions] = useState<Record<string, any>>({});
   const [previewAttachment, setPreviewAttachment] = useState<{ id: string, type: string, url: string, content?: string } | null>(null);
+  const [orgUsers, setOrgUsers] = useState<any[]>([]);
+  const [orgGroups, setOrgGroups] = useState<any[]>([]);
+  const [shareRecipientId, setShareRecipientId] = useState('');
+  const [sharePermission, setSharePermission] = useState('VIEW');
+  const [shareType, setShareType] = useState<'user' | 'group' | 'email'>('user');
+  const [shareEmail, setShareEmail] = useState('');
   
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, confirmColor?: 'red' | 'primary', confirmText?: string }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
@@ -46,7 +52,12 @@ export function SecretDetail() {
     async function decrypt() {
       if (!secret || !privateKey) return;
       try {
-        const encryptedItemKeyBuf = Uint8Array.from(atob(secret.encryptedItemKey), c => c.charCodeAt(0)).buffer;
+        let keyToUse = secret.encryptedItemKey;
+        if (user && secret.ownerId !== user.id) {
+          const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
+          if (myShare) keyToUse = myShare.encryptedItemKey;
+        }
+        const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
         const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
         
         const encryptedDataBuf = Uint8Array.from(atob(secret.encryptedData), c => c.charCodeAt(0)).buffer;
@@ -96,6 +107,15 @@ export function SecretDetail() {
           }
           setDecryptedVersions(decrypted);
         })
+        .catch(console.error);
+    } else if (activeTab === 'sharing') {
+      fetch('http://localhost:3000/users', { credentials: 'include' })
+        .then(res => res.json())
+        .then(setOrgUsers)
+        .catch(console.error);
+      fetch('http://localhost:3000/groups', { credentials: 'include' })
+        .then(res => res.json())
+        .then(setOrgGroups)
         .catch(console.error);
     }
   }, [activeTab, id]);
@@ -266,6 +286,100 @@ export function SecretDetail() {
     });
   };
 
+  const handleShareSubmit = async () => {
+    if (!privateKey || !secret) return;
+    setLoading(true);
+    let keyToUse = secret.encryptedItemKey;
+    if (user && secret.ownerId !== user.id) {
+      const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
+      if (myShare) keyToUse = myShare.encryptedItemKey;
+    }
+    try {
+      if (shareType === 'user') {
+        const recipient = orgUsers.find(u => u.id === shareRecipientId);
+        if (!recipient) throw new Error('User not found');
+        
+        const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
+        const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
+        
+        const publicKeyBuf = Uint8Array.from(atob(recipient.publicKey), c => c.charCodeAt(0)).buffer;
+        const cryptoPubKey = await importPublicKey(publicKeyBuf);
+        const newEncryptedItemKey = await encryptItemKeyWithPublicKey(itemKey, cryptoPubKey);
+        
+        const res = await fetch(`http://localhost:3000/shares/internal`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            secretId: id,
+            recipientUserId: shareRecipientId,
+            permission: sharePermission,
+            encryptedItemKey: arrayBufferToBase64(newEncryptedItemKey)
+          })
+        });
+        if (!res.ok) throw new Error(await res.text());
+      } else if (shareType === 'group') {
+        const group = orgGroups.find(g => g.id === shareRecipientId);
+        if (!group) throw new Error('Group not found');
+        
+        const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
+        const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
+        
+        for (const member of group.members) {
+          const publicKeyBuf = Uint8Array.from(atob(member.user.publicKey), c => c.charCodeAt(0)).buffer;
+          const cryptoPubKey = await importPublicKey(publicKeyBuf);
+          const newEncryptedItemKey = await encryptItemKeyWithPublicKey(itemKey, cryptoPubKey);
+          const res = await fetch(`http://localhost:3000/shares/internal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              secretId: id,
+              recipientUserId: member.userId,
+              permission: sharePermission,
+              encryptedItemKey: arrayBufferToBase64(newEncryptedItemKey)
+            })
+          });
+          if (!res.ok) throw new Error(await res.text());
+        }
+      } else if (shareType === 'email') {
+        const res = await fetch(`http://localhost:3000/shares/invite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            secretId: id,
+            email: shareEmail,
+            permission: sharePermission
+          })
+        });
+        if (!res.ok) throw new Error(await res.text());
+      }
+      
+      await refetch();
+      setShareRecipientId('');
+      setShareEmail('');
+      alert('Shared successfully!');
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || 'Failed to share');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRevoke = async (shareId: string) => {
+    try {
+      await fetch(`http://localhost:3000/shares/${shareId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      refetch();
+    } catch (e) {
+      alert('Failed to revoke');
+    }
+  };
+
   if (isLoading) return <div className="p-8">Loading...</div>;
   if (!privateKey) return <div className="p-8">Vault locked.</div>;
   if (decryptionError) return <div className="p-8 text-red-500">{decryptionError}</div>;
@@ -298,6 +412,9 @@ export function SecretDetail() {
         </button>
         <button onClick={() => setActiveTab('history')} className={`pb-2 px-1 flex items-center gap-2 ${activeTab === 'history' ? 'border-b-2 border-primary text-primary font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
           <History className="w-4 h-4" /> History
+        </button>
+        <button onClick={() => setActiveTab('sharing')} className={`pb-2 px-1 flex items-center gap-2 ${activeTab === 'sharing' ? 'border-b-2 border-primary text-primary font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
+          <Share2 className="w-4 h-4" /> Sharing
         </button>
       </div>
 
@@ -484,6 +601,92 @@ export function SecretDetail() {
         )}
 
       </div>
+      
+      {activeTab === 'sharing' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Share Access</h3>
+            {secret?.isPersonal ? (
+              <p className="text-red-500">Personal secrets cannot be shared.</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex gap-4 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="radio" checked={shareType === 'user'} onChange={() => setShareType('user')} /> User
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="radio" checked={shareType === 'group'} onChange={() => setShareType('group')} /> Group
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="radio" checked={shareType === 'email'} onChange={() => setShareType('email')} /> External Email
+                  </label>
+                </div>
+                
+                <div className="flex gap-4">
+                  {shareType === 'user' && (
+                    <select value={shareRecipientId} onChange={e => setShareRecipientId(e.target.value)} className="flex-1 rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:text-white">
+                      <option value="">Select User...</option>
+                      {orgUsers.filter(u => u.id !== secret.ownerId).map(u => (
+                        <option key={u.id} value={u.id}>{u.email}</option>
+                      ))}
+                    </select>
+                  )}
+                  {shareType === 'group' && (
+                    <select value={shareRecipientId} onChange={e => setShareRecipientId(e.target.value)} className="flex-1 rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:text-white">
+                      <option value="">Select Group...</option>
+                      {orgGroups.map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  {shareType === 'email' && (
+                    <input type="email" placeholder="Email Address" value={shareEmail} onChange={e => setShareEmail(e.target.value)} className="flex-1 rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:text-white" />
+                  )}
+                  
+                  <select value={sharePermission} onChange={e => setSharePermission(e.target.value)} className="w-48 rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:text-white">
+                    <option value="ONE_CLICK_LOGIN_ONLY">One-Click Only</option>
+                    <option value="VIEW">View</option>
+                    <option value="MODIFY">Modify</option>
+                    <option value="MANAGE">Manage</option>
+                  </select>
+                  
+                  <button onClick={handleShareSubmit} disabled={loading || (!shareRecipientId && !shareEmail)} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                    Share
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Current Access</h3>
+            {secret?.shares?.length === 0 && secret?.thirdPartyInvites?.length === 0 ? (
+              <p className="text-gray-500">Not shared with anyone.</p>
+            ) : (
+              <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                {secret?.shares?.map((share: any) => (
+                  <li key={share.id} className="py-3 flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{share.recipientUser?.email}</p>
+                      <p className="text-xs text-gray-500">Permission: {share.permission}</p>
+                    </div>
+                    <button onClick={() => handleRevoke(share.id)} className="text-red-500 hover:text-red-700 text-sm">Revoke</button>
+                  </li>
+                ))}
+                {secret?.thirdPartyInvites?.map((invite: any) => (
+                  <li key={invite.id} className="py-3 flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">{invite.email} <span className="text-xs ml-2 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">External</span></p>
+                      <p className="text-xs text-gray-500">Status: {invite.status} | Permission: {invite.permission}</p>
+                    </div>
+                    <button onClick={() => handleRevoke(invite.id)} className="text-red-500 hover:text-red-700 text-sm">Revoke</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
       
       <Modal 
         isOpen={confirmModal.isOpen}

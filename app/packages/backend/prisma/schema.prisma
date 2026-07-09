@@ -15,6 +15,13 @@ enum OrganizationType {
   PERSONAL
 }
 
+enum SharePermission {
+  ONE_CLICK_LOGIN_ONLY
+  VIEW
+  MODIFY
+  MANAGE
+}
+
 enum Role {
   SUPER_ADMIN
   ADMIN
@@ -52,6 +59,7 @@ model Organization {
   secrets     Secret[]
   policies    PasswordPolicy[]
   folders     Folder[]
+  userGroups  UserGroup[]
 }
 
 model User {
@@ -79,6 +87,8 @@ model User {
   refreshTokens       RefreshToken[]
   secrets             Secret[]
   folders             Folder[]
+  sharesReceived      SecretShare[]
+  groupMemberships    UserGroupMember[]
 }
 
 model RefreshToken {
@@ -140,6 +150,8 @@ model Secret {
   folders              FolderSecret[]
   versions             SecretVersion[]
   attachments          FileAttachment[]
+  shares               SecretShare[]
+  thirdPartyInvites    ThirdPartyInvite[]
 }
 
 model PasswordPolicy {
@@ -208,4 +220,53 @@ model FileAttachment {
   createdAt          DateTime @default(now())
 
   secret             Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+}
+
+model SecretShare {
+  id               String          @id @default(uuid())
+  secretId         String
+  recipientUserId  String
+  permission       SharePermission
+  encryptedItemKey String
+  createdAt        DateTime        @default(now())
+
+  secret           Secret          @relation(fields: [secretId], references: [id], onDelete: Cascade)
+  recipientUser    User            @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+}
+
+model UserGroup {
+  id             String            @id @default(uuid())
+  organizationId String
+  name           String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        UserGroupMember[]
+}
+
+model UserGroupMember {
+  userId  String
+  groupId String
+
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group   UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+}
+
+model ThirdPartyInvite {
+  id                  String          @id @default(uuid())
+  secretId            String
+  email               String
+  permission          SharePermission
+  tokenHash           String          @unique
+  status              InviteStatus    @default(PENDING)
+  expiresAt           DateTime
+  ephemeralPublicKey  String?
+  encryptedItemKey    String?
+  encryptedPrivateKey String?
+  createdAt           DateTime        @default(now())
+
+  secret              Secret          @relation(fields: [secretId], references: [id], onDelete: Cascade)
 }

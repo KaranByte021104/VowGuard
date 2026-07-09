@@ -16,7 +16,7 @@ function getIconForTemplate(type: string) {
 }
 
 export function SecretsList() {
-  const { privateKey } = useSessionStore();
+  const { privateKey, user } = useSessionStore();
   const [decryptedSecrets, setDecryptedSecrets] = useState<Record<string, any>>({});
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
@@ -116,7 +116,12 @@ export function SecretsList() {
     // Client-side decryption for export
     const decryptedData = await Promise.all(secrets.map(async (secret: any) => {
       try {
-        const encryptedItemKeyBuf = Uint8Array.from(atob(secret.encryptedItemKey), c => c.charCodeAt(0)).buffer;
+        let keyToUse = secret.encryptedItemKey;
+        if (user && secret.ownerId !== user.id) {
+          const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
+          if (myShare) keyToUse = myShare.encryptedItemKey;
+        }
+        const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
         const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
         
         const encryptedDataBuf = Uint8Array.from(atob(secret.encryptedData), c => c.charCodeAt(0)).buffer;
@@ -146,7 +151,12 @@ export function SecretsList() {
       const decrypted: Record<string, any> = {};
       for (const secret of secrets) {
         try {
-          const encryptedItemKeyBuf = Uint8Array.from(atob(secret.encryptedItemKey), c => c.charCodeAt(0)).buffer;
+          let keyToUse = secret.encryptedItemKey;
+          if (user && secret.ownerId !== user.id) {
+            const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
+            if (myShare) keyToUse = myShare.encryptedItemKey;
+          }
+          const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
           const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
           
           const encryptedDataBuf = Uint8Array.from(atob(secret.encryptedData), c => c.charCodeAt(0)).buffer;

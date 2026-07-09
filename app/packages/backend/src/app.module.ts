@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -11,6 +12,9 @@ import { PrismaModule } from './prisma/prisma.module';
 import { PoliciesModule } from './policies/policies.module';
 import { FoldersModule } from './folders/folders.module';
 import { AttachmentsModule } from './attachments/attachments.module';
+import { GroupsModule } from './groups/groups.module';
+import { UsersModule } from './users/users.module';
+import { SharesModule } from './shares/shares.module';
 
 @Module({
   imports: [
@@ -20,7 +24,9 @@ import { AttachmentsModule } from './attachments/attachments.module';
         port: parseInt(process.env.REDIS_PORT || '6379'),
       },
     }),
+    ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
+    UsersModule,
     SecretsModule,
     SharingModule,
     AdminModule,
@@ -29,6 +35,8 @@ import { AttachmentsModule } from './attachments/attachments.module';
     PoliciesModule,
     FoldersModule,
     AttachmentsModule,
+    GroupsModule,
+    SharesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

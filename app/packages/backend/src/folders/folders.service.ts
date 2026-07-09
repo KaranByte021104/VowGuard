@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -58,6 +58,16 @@ export class FoldersService {
       where: { id: folderId, organizationId, ownerId: userId }
     });
     if (!folder) throw new NotFoundException('Folder not found');
+
+    const secrets = await this.prisma.secret.findMany({
+      where: { id: { in: secretIds }, organizationId }
+    });
+
+    for (const secret of secrets) {
+      if (secret.isPersonal) {
+        throw new ForbiddenException(`Secret ${secret.id} is personal and cannot be added to a folder`);
+      }
+    }
 
     const data = secretIds.map(secretId => ({ folderId, secretId }));
     return this.prisma.folderSecret.createMany({

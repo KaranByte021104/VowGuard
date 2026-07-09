@@ -27,7 +27,8 @@ export function AddSecret() {
     domain: '',
     username: '',
     password: '',
-    notes: ''
+    notes: '',
+    isPersonal: false
   });
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -51,7 +52,8 @@ export function AddSecret() {
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const value = e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value;
+    setFormData({ ...formData, [e.target.name]: value });
   };
 
   const handleCatalogSelect = (site: typeof SITE_CATALOG[0]) => {
@@ -137,7 +139,7 @@ export function AddSecret() {
           encryptedData: arrayBufferToBase64(encryptedData),
           iv: arrayBufferToBase64(iv.buffer),
           encryptedItemKey: arrayBufferToBase64(encryptedItemKey),
-          isPersonal: false,
+          isPersonal: formData.isPersonal,
           accessControlEnabled: false,
           folderId: folderId || undefined
         })
@@ -242,6 +244,20 @@ export function AddSecret() {
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Secure Notes</label>
           <textarea name="notes" rows={4} value={formData.notes} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+        </div>
+
+        <div className="flex items-center gap-2 mt-4">
+          <input 
+            type="checkbox" 
+            id="isPersonal" 
+            name="isPersonal" 
+            checked={formData.isPersonal} 
+            onChange={handleChange} 
+            className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+          />
+          <label htmlFor="isPersonal" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Mark as Personal (Private, cannot be shared or added to shared folders)
+          </label>
         </div>
 
         <div className="flex justify-end gap-4">

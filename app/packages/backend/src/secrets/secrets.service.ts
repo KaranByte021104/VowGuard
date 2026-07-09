@@ -29,20 +29,34 @@ export class SecretsService {
     });
   }
 
-  async getSecrets(organizationId: string) {
-    // For Sprint 3, just return all secrets in the org since sharing/access control is Sprint 5
-    // Only return secrets metadata to save bandwidth, unless requested otherwise.
-    // Actually, we'll return everything so the frontend can decrypt them.
+  async getSecrets(userId: string, organizationId: string) {
     return this.prisma.secret.findMany({
-      where: { organizationId },
+      where: { 
+        organizationId,
+        OR: [
+          { ownerId: userId },
+          { shares: { some: { recipientUserId: userId } } }
+        ]
+      },
       orderBy: { createdAt: 'desc' },
-      include: { folders: true }
+      include: { 
+        folders: true,
+        shares: {
+          where: { recipientUserId: userId }
+        }
+      }
     });
   }
 
   async getSecret(id: string, organizationId: string) {
     const secret = await this.prisma.secret.findFirst({
-      where: { id, organizationId }
+      where: { id, organizationId },
+      include: {
+        shares: {
+          include: { recipientUser: true }
+        },
+        thirdPartyInvites: true
+      }
     });
     if (!secret) throw new NotFoundException('Secret not found');
     return secret;
