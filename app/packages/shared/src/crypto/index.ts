@@ -69,7 +69,7 @@ export async function decryptPrivateKey(
   derivedKey: CryptoKey
 ): Promise<CryptoKey> {
   const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: iv as any },
     derivedKey,
     encryptedData
   );
@@ -143,7 +143,7 @@ export async function decryptSecretPayload(
   itemKey: CryptoKey
 ): Promise<any> {
   const decrypted = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: iv as any },
     itemKey,
     encryptedData
   );

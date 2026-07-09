@@ -1,0 +1,79 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+
+@Injectable()
+export class FoldersService {
+  constructor(private prisma: PrismaService) {}
+
+  async createFolder(userId: string, organizationId: string, data: { name: string; parentFolderId?: string }) {
+    return this.prisma.folder.create({
+      data: {
+        name: data.name,
+        ownerId: userId,
+        organizationId,
+        parentFolderId: data.parentFolderId,
+      }
+    });
+  }
+
+  async getFolders(organizationId: string, userId: string) {
+    return this.prisma.folder.findMany({
+      where: { organizationId, ownerId: userId },
+      include: {
+        secrets: {
+          include: { secret: true }
+        }
+      }
+    });
+  }
+
+  async updateFolder(id: string, organizationId: string, userId: string, data: { name?: string; parentFolderId?: string }) {
+    const folder = await this.prisma.folder.findFirst({
+      where: { id, organizationId, ownerId: userId }
+    });
+    if (!folder) throw new NotFoundException('Folder not found');
+
+    return this.prisma.folder.update({
+      where: { id },
+      data: {
+        name: data.name,
+        parentFolderId: data.parentFolderId,
+      }
+    });
+  }
+
+  async deleteFolder(id: string, organizationId: string, userId: string) {
+    const folder = await this.prisma.folder.findFirst({
+      where: { id, organizationId, ownerId: userId }
+    });
+    if (!folder) throw new NotFoundException('Folder not found');
+
+    return this.prisma.folder.delete({
+      where: { id }
+    });
+  }
+
+  async bulkAssignSecrets(folderId: string, secretIds: string[], organizationId: string, userId: string) {
+    const folder = await this.prisma.folder.findFirst({
+      where: { id: folderId, organizationId, ownerId: userId }
+    });
+    if (!folder) throw new NotFoundException('Folder not found');
+
+    const data = secretIds.map(secretId => ({ folderId, secretId }));
+    return this.prisma.folderSecret.createMany({
+      data,
+      skipDuplicates: true
+    });
+  }
+
+  async removeSecretFromFolder(folderId: string, secretId: string, organizationId: string, userId: string) {
+    const folder = await this.prisma.folder.findFirst({
+      where: { id: folderId, organizationId, ownerId: userId }
+    });
+    if (!folder) throw new NotFoundException('Folder not found');
+
+    return this.prisma.folderSecret.deleteMany({
+      where: { folderId, secretId }
+    });
+  }
+}

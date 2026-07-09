@@ -9,6 +9,8 @@ import { AdminModule } from './admin/admin.module';
 import { ReportingModule } from './reporting/reporting.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PoliciesModule } from './policies/policies.module';
+import { FoldersModule } from './folders/folders.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { PoliciesModule } from './policies/policies.module';
     ReportingModule,
     PrismaModule,
     PoliciesModule,
+    FoldersModule,
+    AttachmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

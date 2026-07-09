@@ -51,6 +51,7 @@ model Organization {
   invitations Invitation[]
   secrets     Secret[]
   policies    PasswordPolicy[]
+  folders     Folder[]
 }
 
 model User {
@@ -77,6 +78,7 @@ model User {
   organization        Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   refreshTokens       RefreshToken[]
   secrets             Secret[]
+  folders             Folder[]
 }
 
 model RefreshToken {
@@ -134,6 +136,10 @@ model Secret {
 
   owner                User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  folders              FolderSecret[]
+  versions             SecretVersion[]
+  attachments          FileAttachment[]
 }
 
 model PasswordPolicy {
@@ -151,4 +157,55 @@ model PasswordPolicy {
   updatedAt        DateTime     @updatedAt
 
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model Folder {
+  id             String         @id @default(uuid())
+  name           String
+  ownerId        String
+  organizationId String
+  parentFolderId String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  owner          User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parentFolder   Folder?        @relation("FolderHierarchy", fields: [parentFolderId], references: [id], onDelete: Cascade)
+  subFolders     Folder[]       @relation("FolderHierarchy")
+  secrets        FolderSecret[]
+}
+
+model FolderSecret {
+  folderId String
+  secretId String
+  
+  folder   Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  secret   Secret @relation(fields: [secretId], references: [id], onDelete: Cascade)
+
+  @@id([folderId, secretId])
+}
+
+model SecretVersion {
+  id               String   @id @default(uuid())
+  secretId         String
+  encryptedData    String
+  iv               String
+  encryptedItemKey String
+  createdAt        DateTime @default(now())
+
+  secret           Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+}
+
+model FileAttachment {
+  id                 String   @id @default(uuid())
+  secretId           String
+  originalName       String
+  mimeType           String
+  size               Int
+  encryptedBlobPath  String
+  iv                 String
+  encryptedItemKey   String
+  createdAt          DateTime @default(now())
+
+  secret             Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
 }

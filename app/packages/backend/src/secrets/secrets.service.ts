@@ -18,6 +18,13 @@ export class SecretsService {
         encryptedItemKey: data.encryptedItemKey,
         isPersonal: data.isPersonal || false,
         accessControlEnabled: data.accessControlEnabled || false,
+        ...(data.folderId ? {
+          folders: {
+            create: {
+              folderId: data.folderId
+            }
+          }
+        } : {})
       }
     });
   }
@@ -28,7 +35,8 @@ export class SecretsService {
     // Actually, we'll return everything so the frontend can decrypt them.
     return this.prisma.secret.findMany({
       where: { organizationId },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: { folders: true }
     });
   }
 
@@ -40,6 +48,13 @@ export class SecretsService {
     return secret;
   }
 
+  async exportSecrets(userId: string, organizationId: string) {
+    return this.prisma.secret.findMany({
+      where: { ownerId: userId, organizationId },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
+
   async updateSecret(id: string, userId: string, organizationId: string, data: any) {
     const secret = await this.prisma.secret.findFirst({
       where: { id, organizationId }
@@ -48,6 +63,16 @@ export class SecretsService {
 
     // Currently anyone in the org can update if no access control is enforced
     // For Sprint 3, owner or anyone can update. Let's just update.
+    // Create a new version before updating
+    await this.prisma.secretVersion.create({
+      data: {
+        secretId: secret.id,
+        encryptedData: secret.encryptedData,
+        iv: secret.iv,
+        encryptedItemKey: secret.encryptedItemKey,
+      }
+    });
+
     return this.prisma.secret.update({
       where: { id },
       data: {
@@ -56,6 +81,49 @@ export class SecretsService {
         encryptedData: data.encryptedData,
         iv: data.iv,
         encryptedItemKey: data.encryptedItemKey, // If the key changed, though normally just data changes
+      }
+    });
+  }
+
+  async getSecretVersions(id: string, userId: string, organizationId: string) {
+    const secret = await this.prisma.secret.findFirst({
+      where: { id, organizationId, ownerId: userId }
+    });
+    if (!secret) throw new ForbiddenException('Only owner can view versions');
+
+    return this.prisma.secretVersion.findMany({
+      where: { secretId: id },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async restoreSecretVersion(id: string, versionId: string, userId: string, organizationId: string) {
+    const secret = await this.prisma.secret.findFirst({
+      where: { id, organizationId, ownerId: userId }
+    });
+    if (!secret) throw new ForbiddenException('Only owner can restore versions');
+
+    const version = await this.prisma.secretVersion.findFirst({
+      where: { id: versionId, secretId: id }
+    });
+    if (!version) throw new NotFoundException('Version not found');
+
+    // Create a backup of current state before restore
+    await this.prisma.secretVersion.create({
+      data: {
+        secretId: secret.id,
+        encryptedData: secret.encryptedData,
+        iv: secret.iv,
+        encryptedItemKey: secret.encryptedItemKey,
+      }
+    });
+
+    return this.prisma.secret.update({
+      where: { id },
+      data: {
+        encryptedData: version.encryptedData,
+        iv: version.iv,
+        encryptedItemKey: version.encryptedItemKey,
       }
     });
   }

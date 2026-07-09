@@ -17,9 +17,24 @@ export class SecretsController {
     return this.secretsService.getSecrets(req.user.organizationId);
   }
 
+  @Get('export')
+  exportSecrets(@Req() req: any) {
+    return this.secretsService.exportSecrets(req.user.id, req.user.organizationId);
+  }
+
   @Get(':id')
   getSecret(@Req() req: any, @Param('id') id: string) {
     return this.secretsService.getSecret(id, req.user.organizationId);
+  }
+
+  @Get(':id/versions')
+  getSecretVersions(@Req() req: any, @Param('id') id: string) {
+    return this.secretsService.getSecretVersions(id, req.user.id, req.user.organizationId);
+  }
+
+  @Post(':id/versions/:versionId/restore')
+  restoreSecretVersion(@Req() req: any, @Param('id') id: string, @Param('versionId') versionId: string) {
+    return this.secretsService.restoreSecretVersion(id, versionId, req.user.id, req.user.organizationId);
   }
 
   @Put(':id')

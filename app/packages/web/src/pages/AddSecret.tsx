@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSessionStore } from '../store/session';
 import { generateItemKey, encryptSecretPayload, encryptItemKeyWithPublicKey } from '@app/shared/src/crypto';
 import { PasswordGenerator } from '../components/PasswordGenerator';
@@ -17,6 +17,8 @@ const SITE_CATALOG = [
 
 export function AddSecret() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const folderId = searchParams.get('folderId');
   const { publicKey } = useSessionStore();
   const [activePolicy, setActivePolicy] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -136,7 +138,8 @@ export function AddSecret() {
           iv: arrayBufferToBase64(iv.buffer),
           encryptedItemKey: arrayBufferToBase64(encryptedItemKey),
           isPersonal: false,
-          accessControlEnabled: false
+          accessControlEnabled: false,
+          folderId: folderId || undefined
         })
       });
 
