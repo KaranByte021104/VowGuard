@@ -120,11 +120,11 @@ export function Login() {
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email</label>
-                  <input name="email" type="email" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
+                  <input name="email" type="email" value={formData.email} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
                 </div>
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700">Login Password</label>
-                  <input name="loginPassword" type={showLoginPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
+                  <input name="loginPassword" value={formData.loginPassword} type={showLoginPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
                   <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute bottom-2 right-3 flex items-center text-gray-400 hover:text-gray-600">
                     {showLoginPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -143,7 +143,7 @@ export function Login() {
               <>
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700">Master Password</label>
-                  <input name="masterPassword" type={showMasterPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
+                  <input name="masterPassword" value={formData.masterPassword} type={showMasterPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
                   <button type="button" onClick={() => setShowMasterPassword(!showMasterPassword)} className="absolute bottom-2 right-3 flex items-center text-gray-400 hover:text-gray-600">
                     {showMasterPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>

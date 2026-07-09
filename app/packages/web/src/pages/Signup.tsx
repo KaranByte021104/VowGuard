@@ -125,15 +125,15 @@ export function Signup() {
               <>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Organization Name</label>
-                  <input name="organizationName" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
+                  <input name="organizationName" value={formData.organizationName} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email Address</label>
-                  <input name="email" type="email" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
+                  <input name="email" value={formData.email} type="email" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
                 </div>
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700">Login Password</label>
-                  <input name="loginPassword" type={showLoginPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
+                  <input name="loginPassword" value={formData.loginPassword} type={showLoginPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
                   <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute bottom-2 right-3 flex items-center text-gray-400 hover:text-gray-600">
                     {showLoginPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -149,7 +149,7 @@ export function Signup() {
                 </div>
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700">Master Password</label>
-                  <input name="masterPassword" type={showPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
+                  <input name="masterPassword" value={formData.masterPassword} type={showPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute bottom-2 right-3 flex items-center text-gray-400 hover:text-gray-600">
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>

@@ -1,24 +1,28 @@
-// @ts-ignore
-import argon2 from 'argon2-browser/dist/argon2-bundled.min.js';
+import { argon2id } from 'hash-wasm';
 
 /**
  * Derives a 256-bit AES-GCM encryption key from a Master Password using Argon2id.
  * The salt should be unique per user (e.g., their email).
  */
 export async function deriveKey(masterPassword: string, salt: string): Promise<CryptoKey> {
-  const result = await argon2.hash({
-    pass: masterPassword,
+  // Use hash-wasm which avoids blob: worker CSP issues and top-level await bugs
+  const hashHex = await argon2id({
+    password: masterPassword,
     salt: salt,
-    time: 2, // 2 iterations
-    mem: 1024 * 64, // 64 MB
-    hashLen: 32, // 256 bits for AES
+    iterations: 2,
+    memorySize: 1024 * 64, // 64 MB
+    hashLength: 32, // 256 bits for AES
     parallelism: 1,
-    type: argon2.ArgonType.Argon2id,
+    outputType: 'hex',
   });
+
+  const hashBytes = new Uint8Array(
+    hashHex.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16))
+  );
 
   return crypto.subtle.importKey(
     'raw',
-    result.hash,
+    hashBytes,
     { name: 'AES-GCM' },
     false,
     ['encrypt', 'decrypt']
