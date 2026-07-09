@@ -10,6 +10,7 @@ import { AddSecret } from './pages/AddSecret';
 import { ImportSecrets } from './pages/ImportSecrets';
 import { Sharing } from './pages/Sharing';
 import { AuthGuard } from './components/AuthGuard';
+import { Approvals } from './pages/Approvals';
 import './index.css';
 import App from './App.tsx';
 
@@ -40,6 +41,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="secrets/:id" element={<SecretDetail />} />
             <Route path="import" element={<ImportSecrets />} />
             <Route path="sharing" element={<Sharing />} />
+            <Route path="approvals" element={<Approvals />} />
             <Route path="reporting" element={<PlaceholderPage title="Audit & Reporting" />} />
             <Route path="admin" element={<PlaceholderPage title="Administration" />} />
           </Route>

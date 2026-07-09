@@ -27,7 +27,7 @@ export class SecretsController {
   @UseGuards(SharePermissionGuard)
   @SetMetadata('requireSharePermission', 'VIEW')
   getSecret(@Req() req: any, @Param('id') id: string) {
-    return this.secretsService.getSecret(id, req.user.organizationId);
+    return this.secretsService.getSecret(id, req.user.id, req.user.organizationId);
   }
 
   @Get(':id/versions')

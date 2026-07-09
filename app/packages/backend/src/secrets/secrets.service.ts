@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, HttpException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -35,7 +35,14 @@ export class SecretsService {
         organizationId,
         OR: [
           { ownerId: userId },
-          { shares: { some: { recipientUserId: userId } } }
+          { shares: { some: { recipientUserId: userId } } },
+          { 
+            accessControlEnabled: true,
+            isPersonal: false,
+            accessControlConfig: {
+              excludedUsers: { none: { userId } }
+            }
+          }
         ]
       },
       orderBy: { createdAt: 'desc' },
@@ -43,22 +50,52 @@ export class SecretsService {
         folders: true,
         shares: {
           where: { recipientUserId: userId }
+        },
+        accessRequests: {
+          where: { requesterId: userId }
         }
       }
     });
   }
 
-  async getSecret(id: string, organizationId: string) {
+  async getSecret(id: string, userId: string, organizationId: string) {
     const secret = await this.prisma.secret.findFirst({
       where: { id, organizationId },
       include: {
         shares: {
           include: { recipientUser: true }
         },
-        thirdPartyInvites: true
+        thirdPartyInvites: true,
+        accessControlConfig: true,
+        accessRequests: {
+          where: { requesterId: userId }
+        }
       }
     });
     if (!secret) throw new NotFoundException('Secret not found');
+
+    if (secret.accessControlEnabled && secret.ownerId !== userId) {
+      console.log('Access Control check for secret:', secret.id, 'user:', userId);
+      // Check if they have standing access (share)
+      const hasShare = secret.shares.some(s => s.recipientUserId === userId);
+      console.log('hasShare:', hasShare);
+      if (!hasShare) {
+        // Must have an approved request that is not expired
+        const sortedRequests = [...secret.accessRequests].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const approvedRequest = sortedRequests.find(r => r.status === 'APPROVED');
+        console.log('approvedRequest:', approvedRequest);
+        if (!approvedRequest) {
+          console.log('No approved request found. Throwing 403.');
+          throw new ForbiddenException('Access Control is enabled. You must request access.');
+        }
+        if (approvedRequest.expiresAt && new Date() > approvedRequest.expiresAt) {
+          console.log('Request expired. Throwing 410.');
+          throw new HttpException('Access expired', 410);
+        }
+        console.log('Access granted via request!');
+      }
+    }
+
     return secret;
   }
 

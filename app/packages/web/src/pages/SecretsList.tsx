@@ -152,9 +152,16 @@ export function SecretsList() {
       for (const secret of secrets) {
         try {
           let keyToUse = secret.encryptedItemKey;
-          if (user && secret.ownerId !== user.id) {
-            const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
-            if (myShare) keyToUse = myShare.encryptedItemKey;
+          // Access Control fallback
+          const sortedRequests = [...(secret.accessRequests || [])].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          const myRequest = sortedRequests.find((r: any) => r.status === 'APPROVED');
+          if (myRequest && myRequest.encryptedItemKey) {
+            keyToUse = myRequest.encryptedItemKey;
+          } else {
+            if (user && secret.ownerId !== user.id) {
+              const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
+              if (myShare) keyToUse = myShare.encryptedItemKey;
+            }
           }
           const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
           const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);

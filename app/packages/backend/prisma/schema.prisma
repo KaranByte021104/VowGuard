@@ -46,6 +46,14 @@ enum InviteStatus {
   REVOKED
 }
 
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+  VOIDED
+}
+
 model Organization {
   id          String           @id @default(uuid())
   name        String
@@ -89,6 +97,10 @@ model User {
   folders             Folder[]
   sharesReceived      SecretShare[]
   groupMemberships    UserGroupMember[]
+  accessRequests      AccessRequest[]
+  accessApprovals     AccessApproval[]
+  accessControlApprover AccessControlApprover[]
+  accessControlExcluded AccessControlExcludedUser[]
 }
 
 model RefreshToken {
@@ -152,6 +164,8 @@ model Secret {
   attachments          FileAttachment[]
   shares               SecretShare[]
   thirdPartyInvites    ThirdPartyInvite[]
+  accessControlConfig  AccessControlConfig?
+  accessRequests       AccessRequest[]
 }
 
 model PasswordPolicy {
@@ -269,4 +283,70 @@ model ThirdPartyInvite {
   createdAt           DateTime        @default(now())
 
   secret              Secret          @relation(fields: [secretId], references: [id], onDelete: Cascade)
+}
+
+model AccessControlConfig {
+  id                    String   @id @default(uuid())
+  secretId              String   @unique
+  minimumApproverCount  Int      @default(1)
+  autoVoidHours         Int      @default(24)
+  grantedAccessHours    Int      @default(1)
+  automaticApprovalRule String?  // Optional JSON or string enum
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  secret                Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+  approvers             AccessControlApprover[]
+  excludedUsers         AccessControlExcludedUser[]
+}
+
+model AccessControlApprover {
+  configId String
+  userId   String
+
+  config   AccessControlConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([configId, userId])
+}
+
+model AccessControlExcludedUser {
+  configId String
+  userId   String
+
+  config   AccessControlConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([configId, userId])
+}
+
+model AccessRequest {
+  id             String        @id @default(uuid())
+  secretId       String
+  requesterId    String
+  reason         String
+  timing         String?       // IMMEDIATE or Scheduled date
+  status         RequestStatus @default(PENDING)
+  expiresAt      DateTime?     // When granted access ends
+  voidsAt        DateTime?     // When unanswered request auto-voids
+  encryptedItemKey String?     // Provided by the final approver
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  secret         Secret        @relation(fields: [secretId], references: [id], onDelete: Cascade)
+  requester      User          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  approvals      AccessApproval[]
+}
+
+model AccessApproval {
+  id             String        @id @default(uuid())
+  requestId      String
+  approverId     String
+  decision       String        // APPROVED or DENIED
+  createdAt      DateTime      @default(now())
+
+  request        AccessRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver       User          @relation(fields: [approverId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, approverId])
 }

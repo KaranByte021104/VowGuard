@@ -15,6 +15,7 @@ import { AttachmentsModule } from './attachments/attachments.module';
 import { GroupsModule } from './groups/groups.module';
 import { UsersModule } from './users/users.module';
 import { SharesModule } from './shares/shares.module';
+import { AccessControlModule } from './access-control/access-control.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { SharesModule } from './shares/shares.module';
     AttachmentsModule,
     GroupsModule,
     SharesModule,
+    AccessControlModule,
   ],
   controllers: [AppController],
   providers: [AppService],

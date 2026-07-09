@@ -1,13 +1,22 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Shield, Users, Settings, Activity } from 'lucide-react';
+import { Home, Shield, ShieldAlert, Users, Settings, Activity, LogOut } from 'lucide-react';
 import { useSessionStore } from '../store/session';
 
 export function Navigation() {
-  const { user } = useSessionStore();
+  const { user, clearUser } = useSessionStore();
+  
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:3000/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch (e) {}
+    clearUser();
+    window.location.href = '/login';
+  };
   
   const navItems = [
     { name: 'Dashboard', path: '/', icon: Home },
     { name: 'Secrets', path: '/secrets', icon: Shield },
+    { name: 'Approvals', path: '/approvals', icon: ShieldAlert },
     { name: 'Sharing', path: '/sharing', icon: Users },
     { name: 'Reporting', path: '/reporting', icon: Activity },
     { name: 'Admin', path: '/admin', icon: Settings },
@@ -42,14 +51,23 @@ export function Navigation() {
       </nav>
       
       <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/30">
-          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">
-            {user?.email?.[0]?.toUpperCase() || 'U'}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/30">
+            <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">
+              {user?.email?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <div className="flex flex-col truncate w-full">
+              <span className="text-sm font-medium text-gray-900 dark:text-white">{user?.role || 'User'}</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email || 'Loading...'}</span>
+            </div>
           </div>
-          <div className="flex flex-col truncate w-full">
-            <span className="text-sm font-medium text-gray-900 dark:text-white">{user?.role || 'User'}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email || 'Loading...'}</span>
-          </div>
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full text-left"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Logout</span>
+          </button>
         </div>
       </div>
     </div>

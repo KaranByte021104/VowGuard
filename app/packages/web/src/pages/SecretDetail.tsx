@@ -25,13 +25,27 @@ export function SecretDetail() {
   const [showPassword, setShowPassword] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
   const [decryptionError, setDecryptionError] = useState('');
-  const [activeTab, setActiveTab] = useState<'details' | 'attachments' | 'history' | 'sharing'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'attachments' | 'history' | 'sharing' | 'access-control'>('details');
   const [attachments, setAttachments] = useState<any[]>([]);
   const [versions, setVersions] = useState<any[]>([]);
   const [decryptedVersions, setDecryptedVersions] = useState<Record<string, any>>({});
   const [previewAttachment, setPreviewAttachment] = useState<{ id: string, type: string, url: string, content?: string } | null>(null);
   const [orgUsers, setOrgUsers] = useState<any[]>([]);
   const [orgGroups, setOrgGroups] = useState<any[]>([]);
+  
+  // Access Control states
+  const [acConfig, setAcConfig] = useState({
+    enabled: false,
+    minimumApproverCount: 1,
+    autoVoidHours: 24,
+    grantedAccessHours: 1,
+    automaticApprovalRule: 'NONE'
+  });
+  const [acApprovers, setAcApprovers] = useState<string[]>([]);
+  const [isLocked, setIsLocked] = useState(false);
+  const [lockReason, setLockReason] = useState('');
+  const [requestReason, setRequestReason] = useState('');
+  const [requestSubmitted, setRequestSubmitted] = useState(false);
   const [shareRecipientId, setShareRecipientId] = useState('');
   const [sharePermission, setSharePermission] = useState('VIEW');
   const [shareType, setShareType] = useState<'user' | 'group' | 'email'>('user');
@@ -43,6 +57,19 @@ export function SecretDetail() {
     queryKey: ['secret', id],
     queryFn: async () => {
       const res = await fetch(`http://localhost:3000/secrets/${id}`, { credentials: 'include' });
+      if (res.status === 403) {
+        const data = await res.json();
+        setIsLocked(true);
+        setLockReason(data.message);
+        return { isLocked: true };
+      }
+      if (res.status === 410) {
+        setIsLocked(true);
+        setLockReason('Your granted access has expired. You must request access again.');
+        return { isLocked: true };
+      }
+      setIsLocked(false);
+      setLockReason('');
       if (!res.ok) throw new Error('Secret not found');
       return res.json();
     }
@@ -52,10 +79,20 @@ export function SecretDetail() {
     async function decrypt() {
       if (!secret || !privateKey) return;
       try {
+        if (secret.isLocked) return;
+
         let keyToUse = secret.encryptedItemKey;
         if (user && secret.ownerId !== user.id) {
           const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
-          if (myShare) keyToUse = myShare.encryptedItemKey;
+          if (myShare) {
+            keyToUse = myShare.encryptedItemKey;
+          } else {
+            const sortedRequests = [...(secret.accessRequests || [])].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            const myRequest = sortedRequests.find((r: any) => r.status === 'APPROVED');
+            if (myRequest && myRequest.encryptedItemKey) {
+              keyToUse = myRequest.encryptedItemKey;
+            }
+          }
         }
         const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
         const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
@@ -88,8 +125,12 @@ export function SecretDetail() {
         .catch(console.error);
     } else if (activeTab === 'history') {
       fetch(`http://localhost:3000/secrets/${id}/versions`, { credentials: 'include' })
-        .then(res => res.json())
+        .then(async res => {
+          if (!res.ok) throw new Error(await res.text());
+          return res.json();
+        })
         .then(async (fetchedVersions) => {
+          if (!Array.isArray(fetchedVersions)) return;
           setVersions(fetchedVersions);
           if (!privateKey) return;
           const decrypted: Record<string, any> = {};
@@ -107,7 +148,10 @@ export function SecretDetail() {
           }
           setDecryptedVersions(decrypted);
         })
-        .catch(console.error);
+        .catch(e => {
+          console.error(e);
+          setVersions([]);
+        });
     } else if (activeTab === 'sharing') {
       fetch('http://localhost:3000/users', { credentials: 'include' })
         .then(res => res.json())
@@ -117,8 +161,24 @@ export function SecretDetail() {
         .then(res => res.json())
         .then(setOrgGroups)
         .catch(console.error);
+    } else if (activeTab === 'access-control') {
+      fetch('http://localhost:3000/users', { credentials: 'include' })
+        .then(res => res.json())
+        .then(setOrgUsers)
+        .catch(console.error);
+      
+      if (secret?.accessControlConfig) {
+        setAcConfig({
+          enabled: true,
+          minimumApproverCount: secret.accessControlConfig.minimumApproverCount,
+          autoVoidHours: secret.accessControlConfig.autoVoidHours,
+          grantedAccessHours: secret.accessControlConfig.grantedAccessHours,
+          automaticApprovalRule: secret.accessControlConfig.automaticApprovalRule || 'NONE'
+        });
+        // Approvers not included in this simple fetch, but could be.
+      }
     }
-  }, [activeTab, id]);
+  }, [activeTab, id, secret]);
 
   const handleRestore = async (versionId: string) => {
     setConfirmModal({
@@ -380,8 +440,100 @@ export function SecretDetail() {
     }
   };
 
+  const handleEnableAccessControl = async () => {
+    try {
+      const res = await fetch(`http://localhost:3000/secrets/${id}/access-control`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          minimumApproverCount: acConfig.minimumApproverCount,
+          autoVoidHours: acConfig.autoVoidHours,
+          grantedAccessHours: acConfig.grantedAccessHours,
+          automaticApprovalRule: acConfig.automaticApprovalRule === 'NONE' ? null : acConfig.automaticApprovalRule,
+          approvers: acApprovers
+        })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      alert('Access Control Enabled!');
+      refetch();
+    } catch (e: any) {
+      alert(e.message || 'Failed to enable access control');
+    }
+  };
+
+  const handleRequestAccess = async () => {
+    try {
+      const res = await fetch(`http://localhost:3000/secrets/${id}/requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          reason: requestReason,
+          timing: 'IMMEDIATE'
+        })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      alert('Request submitted!');
+      setRequestSubmitted(true);
+    } catch (e: any) {
+      alert(e.message || 'Failed to request access');
+    }
+  };
+
   if (isLoading) return <div className="p-8">Loading...</div>;
-  if (!privateKey) return <div className="p-8">Vault locked.</div>;
+  if (!privateKey) {
+    return (
+      <div className="p-8 text-center bg-yellow-50 dark:bg-yellow-900/20 rounded-lg max-w-xl mx-auto mt-20 border border-yellow-200 dark:border-yellow-900/50">
+        <h2 className="text-xl font-bold text-yellow-800 dark:text-yellow-500">Vault Locked</h2>
+        <p className="mt-2 text-yellow-700 dark:text-yellow-600">Please unlock your vault to view this secret.</p>
+        <button onClick={() => window.location.href = '/login'} className="mt-4 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded font-medium">
+          Unlock Vault
+        </button>
+      </div>
+    );
+  }
+
+  if (isLocked || secret?.isLocked) {
+    return (
+      <div className="max-w-xl mx-auto mt-20 p-8 bg-white dark:bg-gray-800 rounded-xl shadow border border-gray-200 dark:border-gray-700 text-center">
+        <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-300">
+          <EyeOff className="w-8 h-8" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2 dark:text-white">Access Locked</h2>
+        <p className="text-gray-500 mb-6">{lockReason || 'This secret is protected by Access Control.'}</p>
+        
+        {requestSubmitted ? (
+          <div className="bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-300 p-4 rounded text-sm mb-4">
+            Your request has been successfully submitted and is pending approval. You will be able to access the secret once approved.
+          </div>
+        ) : (
+          <div className="text-left space-y-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Reason for Request</label>
+            <textarea 
+              rows={3} 
+              value={requestReason} 
+              onChange={e => setRequestReason(e.target.value)} 
+              className="w-full border-gray-300 rounded shadow-sm p-2 dark:bg-gray-700 dark:text-white"
+              placeholder="I need access to deploy to production..."
+            />
+            <button onClick={handleRequestAccess} disabled={!requestReason} className="w-full bg-primary text-white py-2 rounded font-medium hover:bg-blue-700 disabled:opacity-50">
+              Submit Request
+            </button>
+          </div>
+        )}
+        <div className="mt-6 flex flex-col gap-2 justify-center items-center">
+          <button onClick={() => refetch()} className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded font-medium">
+            Refresh Status
+          </button>
+          <button onClick={() => navigate('/secrets')} className="text-gray-500 hover:underline">
+            Return to Vault
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (decryptionError) return <div className="p-8 text-red-500">{decryptionError}</div>;
 
   return (
@@ -410,12 +562,19 @@ export function SecretDetail() {
         <button onClick={() => setActiveTab('attachments')} className={`pb-2 px-1 flex items-center gap-2 ${activeTab === 'attachments' ? 'border-b-2 border-primary text-primary font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
           <Paperclip className="w-4 h-4" /> Attachments
         </button>
-        <button onClick={() => setActiveTab('history')} className={`pb-2 px-1 flex items-center gap-2 ${activeTab === 'history' ? 'border-b-2 border-primary text-primary font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
-          <History className="w-4 h-4" /> History
-        </button>
+        {user?.id === secret?.ownerId && (
+          <button onClick={() => setActiveTab('history')} className={`pb-2 px-1 flex items-center gap-2 ${activeTab === 'history' ? 'border-b-2 border-primary text-primary font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
+            <History className="w-4 h-4" /> History
+          </button>
+        )}
         <button onClick={() => setActiveTab('sharing')} className={`pb-2 px-1 flex items-center gap-2 ${activeTab === 'sharing' ? 'border-b-2 border-primary text-primary font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
           <Share2 className="w-4 h-4" /> Sharing
         </button>
+        {user?.id === secret?.ownerId && (
+          <button onClick={() => setActiveTab('access-control')} className={`pb-2 px-1 flex items-center gap-2 ${activeTab === 'access-control' ? 'border-b-2 border-primary text-primary font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
+            <EyeOff className="w-4 h-4" /> Access Control
+          </button>
+        )}
       </div>
 
       <div className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
@@ -685,6 +844,64 @@ export function SecretDetail() {
               </ul>
             )}
           </div>
+        </div>
+      )}
+      
+      {activeTab === 'access-control' && user?.id === secret?.ownerId && (
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">Access Control Settings</h3>
+          {secret?.isPersonal ? (
+            <p className="text-red-500">Personal secrets cannot use Access Control.</p>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Minimum Approvers</label>
+                <input type="number" min="1" value={acConfig.minimumApproverCount} onChange={e => setAcConfig({...acConfig, minimumApproverCount: parseInt(e.target.value)})} className="mt-1 block w-32 rounded-md border-gray-300 p-2 dark:bg-gray-700 dark:text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Auto-Void Unanswered Requests (Hours)</label>
+                <input type="number" min="1" value={acConfig.autoVoidHours} onChange={e => setAcConfig({...acConfig, autoVoidHours: parseInt(e.target.value)})} className="mt-1 block w-32 rounded-md border-gray-300 p-2 dark:bg-gray-700 dark:text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Granted Access Duration (Hours)</label>
+                <input type="number" min="1" value={acConfig.grantedAccessHours} onChange={e => setAcConfig({...acConfig, grantedAccessHours: parseInt(e.target.value)})} className="mt-1 block w-32 rounded-md border-gray-300 p-2 dark:bg-gray-700 dark:text-white" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Approvers</label>
+                
+                <div className="mt-2 flex flex-wrap gap-2 mb-2">
+                  {acApprovers.map(id => {
+                    const u = orgUsers.find(user => user.id === id);
+                    return (
+                      <div key={id} className="flex items-center gap-1 bg-blue-50 text-blue-700 border border-blue-200 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-1 rounded text-sm">
+                        <span>{u ? u.email : id} {u?.id === user?.id ? '(You)' : ''}</span>
+                        <button type="button" onClick={() => setAcApprovers(acApprovers.filter(a => a !== id))} className="hover:text-blue-900 dark:hover:text-white ml-1 font-bold">&times;</button>
+                      </div>
+                    );
+                  })}
+                  {acApprovers.length === 0 && <span className="text-sm text-gray-500">No approvers selected.</span>}
+                </div>
+
+                <select 
+                  value=""
+                  onChange={e => {
+                    if (e.target.value && !acApprovers.includes(e.target.value)) {
+                      setAcApprovers([...acApprovers, e.target.value]);
+                    }
+                  }} 
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">Add an approver...</option>
+                  {orgUsers.filter(u => !acApprovers.includes(u.id)).map(u => (
+                    <option key={u.id} value={u.id}>{u.email}{u.id === user?.id ? ' (You)' : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <button onClick={handleEnableAccessControl} className="bg-primary text-white px-4 py-2 rounded hover:bg-blue-700">
+                {secret.accessControlEnabled ? 'Update Access Control' : 'Enable Access Control'}
+              </button>
+            </div>
+          )}
         </div>
       )}
       

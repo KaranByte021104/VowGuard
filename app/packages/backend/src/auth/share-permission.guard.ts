@@ -48,7 +48,13 @@ export class SharePermissionGuard implements CanActivate {
       where: { secretId, recipientUserId: user.id }
     });
 
-    if (!share) throw new ForbiddenException('You do not have access to this secret');
+    if (!share) {
+      if (requiredPermission === 'VIEW' && secret.accessControlEnabled) {
+        // Let the service handle the Access Request validation for VIEW operations
+        return true;
+      }
+      throw new ForbiddenException('You do not have access to this secret');
+    }
 
     const permissionWeights = {
       'ONE_CLICK_LOGIN_ONLY': 1,

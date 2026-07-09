@@ -1,0 +1,133 @@
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ShieldAlert, CheckCircle, XCircle } from 'lucide-react';
+import { Modal } from '../components/Modal';
+import { useSessionStore } from '../store/session';
+import { decryptItemKeyWithPrivateKey, encryptItemKeyWithPublicKey, importPublicKey } from '@app/shared/src/crypto';
+
+export function Approvals() {
+  const { privateKey } = useSessionStore();
+  const [loading, setLoading] = useState(false);
+  const [modalState, setModalState] = useState<{isOpen: boolean, req: any, action: 'approve'|'deny'|null}>({
+    isOpen: false, req: null, action: null
+  });
+
+  const { data: requests, refetch, isLoading } = useQuery({
+    queryKey: ['pendingRequests'],
+    queryFn: async () => {
+      const res = await fetch('http://localhost:3000/requests/pending', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load pending requests');
+      return res.json();
+    }
+  });
+
+  const handleAction = async () => {
+    const { req, action } = modalState;
+    if (!req || !action) return;
+    setLoading(true);
+    
+    let finalKey = btoa('dummy-encrypted-item-key-provided-by-approver');
+    
+    if (action === 'approve' && privateKey && req.secret.encryptedItemKey && req.requester.publicKey) {
+      try {
+        const encryptedItemKeyBuf = Uint8Array.from(atob(req.secret.encryptedItemKey), c => c.charCodeAt(0)).buffer;
+        const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
+        
+        const publicKeyBuf = Uint8Array.from(atob(req.requester.publicKey), c => c.charCodeAt(0)).buffer;
+        const cryptoPubKey = await importPublicKey(publicKeyBuf);
+        const newEncryptedItemKey = await encryptItemKeyWithPublicKey(itemKey, cryptoPubKey);
+        
+        let binary = '';
+        const bytes = new Uint8Array(newEncryptedItemKey);
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        finalKey = window.btoa(binary);
+      } catch (e) {
+        console.error('Failed to encrypt key for requester', e);
+        alert('Cryptographic error during approval. The user will not be able to decrypt the secret.');
+      }
+    }
+
+    try {
+      const res = await fetch(`http://localhost:3000/requests/${req.id}/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          encryptedItemKey: finalKey
+        })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      alert(data.message);
+      refetch();
+    } catch (e: any) {
+      alert(e.message || `Failed to ${action}`);
+    } finally {
+      setLoading(false);
+      setModalState({ isOpen: false, req: null, action: null });
+    }
+  };
+
+  if (isLoading) return <div className="p-8">Loading requests...</div>;
+
+  return (
+    <div className="max-w-4xl mx-auto p-8">
+      <div className="flex items-center gap-3 mb-8">
+        <ShieldAlert className="w-8 h-8 text-primary" />
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pending Approvals</h1>
+      </div>
+
+      {(!requests || requests.length === 0) ? (
+        <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700 text-center">
+          <p className="text-gray-500">You have no pending requests to approve.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {requests.map((req: any) => (
+            <div key={req.id} className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 flex justify-between items-center shadow-sm">
+              <div>
+                <h3 className="font-semibold text-lg text-gray-900 dark:text-white">
+                  {req.secret.name}
+                </h3>
+                <p className="text-sm text-gray-500 mb-2">Requested by {req.requester.email}</p>
+                <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded border border-gray-200 dark:border-gray-600">
+                  <span className="font-medium text-xs uppercase text-gray-400 block mb-1">Reason:</span>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">"{req.reason}"</p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col gap-2 ml-6 min-w-[120px]">
+                <button 
+                  onClick={() => setModalState({ isOpen: true, req, action: 'approve' })}
+                  disabled={loading}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded font-medium flex items-center justify-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" /> Approve
+                </button>
+                <button 
+                  onClick={() => setModalState({ isOpen: true, req, action: 'deny' })}
+                  disabled={loading}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded font-medium flex items-center justify-center gap-2"
+                >
+                  <XCircle className="w-4 h-4" /> Deny
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Modal 
+        isOpen={modalState.isOpen}
+        onClose={() => setModalState({ isOpen: false, req: null, action: null })}
+        title={modalState.action === 'approve' ? 'Approve Request' : 'Deny Request'}
+        message={`Are you sure you want to ${modalState.action} access to "${modalState.req?.secret?.name}" for ${modalState.req?.requester?.email}?`}
+        confirmText={modalState.action === 'approve' ? 'Confirm Approval' : 'Confirm Denial'}
+        confirmColor={modalState.action === 'approve' ? 'primary' : 'red'}
+        onConfirm={handleAction}
+      />
+    </div>
+  );
+}
