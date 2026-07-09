@@ -15,6 +15,7 @@ import { EmergencyAccess } from './pages/EmergencyAccess';
 import { EmergencyVault } from './pages/EmergencyVault';
 import { SsoDashboard } from './pages/SsoDashboard';
 import { ConnectedApps } from './pages/ConnectedApps';
+import { CloudBackup } from './pages/CloudBackup';
 import './index.css';
 import App from './App.tsx';
 
@@ -49,6 +50,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="emergency" element={<EmergencyAccess />} />
             <Route path="emergency/:ownerId" element={<EmergencyVault />} />
             <Route path="connected-apps" element={<ConnectedApps />} />
+            <Route path="backup" element={<CloudBackup />} />
+            <Route path="backup/callback/google" element={<CloudBackup />} />
             <Route path="reporting" element={<PlaceholderPage title="Audit & Reporting" />} />
             <Route path="admin" element={<PlaceholderPage title="Administration" />} />
             <Route path="admin/sso" element={<SsoDashboard />} />

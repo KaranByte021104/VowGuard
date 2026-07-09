@@ -18,16 +18,19 @@ import { SharesModule } from './shares/shares.module';
 import { AccessControlModule } from './access-control/access-control.module';
 import { EmergencyAccessModule } from './emergency-access/emergency-access.module';
 import { SsoModule } from './sso/sso.module';
+import { BackupModule } from './backup/backup.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     BullModule.forRoot({
       connection: {
         host: process.env.REDIS_HOST || 'localhost',
         port: parseInt(process.env.REDIS_PORT || '6379'),
       },
     }),
-    ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
     UsersModule,
     SecretsModule,
@@ -43,6 +46,7 @@ import { SsoModule } from './sso/sso.module';
     AccessControlModule,
     EmergencyAccessModule,
     SsoModule,
+    BackupModule,
   ],
   controllers: [AppController],
   providers: [AppService],
