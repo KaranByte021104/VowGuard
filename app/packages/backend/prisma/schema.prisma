@@ -82,6 +82,10 @@ model Organization {
   folders     Folder[]
   userGroups  UserGroup[]
   samlApps    SAMLApp[]
+  notificationRules NotificationRule[]
+  fineGrainedControls FineGrainedControl[]
+  auditLogs     AuditLog[]
+  reportCache   ReportCache?
 
   // Optional keys for SAML Identity Provider
   samlPrivateKey  String?
@@ -123,6 +127,9 @@ model User {
   emergencyGrantsReceived EmergencyAccessGrant[] @relation("EmergencyContact")
   samlAppAccesses         SAMLAppAccess[]
   backupConfig            BackupConfig?
+  notificationRules       NotificationRecipient[]
+  controlExemptions       FineGrainedControlExemption[]
+  auditLogs               AuditLog[]
 }
 
 model SAMLApp {
@@ -431,4 +438,89 @@ model BackupConfig {
   updatedAt        DateTime        @updatedAt
 
   user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum NotificationRecipientType {
+  ALL_ADMINS
+  SPECIFIC_USERS
+}
+
+enum NotificationTiming {
+  INSTANT
+  DAILY_DIGEST
+}
+
+model NotificationRule {
+  id              String                   @id @default(uuid())
+  organizationId  String
+  name            String
+  eventTypes      String[]                 // JSON or array of strings, e.g., ["SHARE_CREATED", "BACKUP_FAILED"]
+  recipientType   NotificationRecipientType @default(ALL_ADMINS)
+  timing          NotificationTiming       @default(INSTANT)
+  isEnabled       Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  organization    Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  specificUsers   NotificationRecipient[]
+}
+
+model NotificationRecipient {
+  ruleId String
+  userId String
+
+  rule   NotificationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ruleId, userId])
+}
+
+model FineGrainedControl {
+  id             String                        @id @default(uuid())
+  organizationId String
+  action         String                        // e.g., "EXPORT_SECRETS", "THIRD_PARTY_SHARING"
+  isEnabled      Boolean                       @default(true) // If true, action is BLOCKED/CONTROLLED
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+
+  organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  exemptions     FineGrainedControlExemption[]
+
+  @@unique([organizationId, action])
+}
+
+model FineGrainedControlExemption {
+  controlId String
+  userId    String
+
+  control   FineGrainedControl @relation(fields: [controlId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([controlId, userId])
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String?      // Could be null if unauthenticated system event
+  action         String       // e.g., "USER_LOGIN", "SECRET_CREATED"
+  resourceType   String?      // e.g., "Secret", "User"
+  resourceId     String?
+  details        String?      // JSON string of extra context
+  ipAddress      String?
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+}
+
+model ReportCache {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  data           String       // JSON blob of all 6 report types
+  generatedAt    DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }

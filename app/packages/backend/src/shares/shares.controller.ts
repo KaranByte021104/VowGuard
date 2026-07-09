@@ -2,6 +2,7 @@ import { Controller, Post, Get, Delete, Body, Param, UseGuards, Request } from '
 import { SharesService } from './shares.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SharePermission } from '@prisma/client';
+import { ControlsGuard, RequireControl } from '../controls/controls.guard';
 
 @Controller('shares')
 export class SharesController {
@@ -22,8 +23,9 @@ export class SharesController {
     return this.sharesService.revokeShare(id, req.user.organizationId, req.user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, ControlsGuard)
   @Post('invite')
+  @RequireControl('THIRD_PARTY_SHARING')
   createThirdPartyInvite(
     @Request() req,
     @Body() body: { secretId: string; email: string; permission?: SharePermission }

@@ -16,6 +16,9 @@ import { EmergencyVault } from './pages/EmergencyVault';
 import { SsoDashboard } from './pages/SsoDashboard';
 import { ConnectedApps } from './pages/ConnectedApps';
 import { CloudBackup } from './pages/CloudBackup';
+import { Dashboard } from './pages/Dashboard';
+import { AdminControls } from './pages/AdminControls';
+import { AlertRules } from './pages/AlertRules';
 import './index.css';
 import App from './App.tsx';
 
@@ -40,7 +43,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<AuthGuard><App /></AuthGuard>}>
-            <Route index element={<PlaceholderPage title="Dashboard" />} />
+            <Route index element={<Dashboard />} />
             <Route path="secrets" element={<SecretsList />} />
             <Route path="secrets/new" element={<AddSecret />} />
             <Route path="secrets/:id" element={<SecretDetail />} />
@@ -54,7 +57,9 @@ createRoot(document.getElementById('root')!).render(
             <Route path="backup/callback/google" element={<CloudBackup />} />
             <Route path="reporting" element={<PlaceholderPage title="Audit & Reporting" />} />
             <Route path="admin" element={<PlaceholderPage title="Administration" />} />
+            <Route path="admin/controls" element={<AdminControls />} />
             <Route path="admin/sso" element={<SsoDashboard />} />
+            <Route path="alerts" element={<AlertRules />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -20,6 +21,10 @@ import { EmergencyAccessModule } from './emergency-access/emergency-access.modul
 import { SsoModule } from './sso/sso.module';
 import { BackupModule } from './backup/backup.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AuditInterceptor } from './audit/audit.interceptor';
+import { ReportsModule } from './reports/reports.module';
+import { AlertsModule } from './alerts/alerts.module';
+import { ControlsModule } from './controls/controls.module';
 
 @Module({
   imports: [
@@ -47,8 +52,17 @@ import { ScheduleModule } from '@nestjs/schedule';
     EmergencyAccessModule,
     SsoModule,
     BackupModule,
+    ReportsModule,
+    AlertsModule,
+    ControlsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
+  ],
 })
 export class AppModule {}

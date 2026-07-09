@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Req, SetMet
 import { SecretsService } from './secrets.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SharePermissionGuard } from '../auth/share-permission.guard';
+import { ControlsGuard, RequireControl } from '../controls/controls.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('secrets')
@@ -19,6 +20,8 @@ export class SecretsController {
   }
 
   @Get('export')
+  @UseGuards(ControlsGuard)
+  @RequireControl('EXPORT_SECRETS')
   exportSecrets(@Req() req: any) {
     return this.secretsService.exportSecrets(req.user.id, req.user.organizationId);
   }

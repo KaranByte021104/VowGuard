@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Shield, ShieldAlert, Users, Settings, Activity, LogOut, Server, Cloud } from 'lucide-react';
+import { Home, Shield, ShieldAlert, Users, Settings, Activity, LogOut, Server, Cloud, Bell } from 'lucide-react';
 import { useSessionStore } from '../store/session';
 
 export function Navigation() {
@@ -21,9 +21,9 @@ export function Navigation() {
     { name: 'Connected Apps', path: '/connected-apps', icon: Server },
     { name: 'Emergency', path: '/emergency', icon: ShieldAlert },
     { name: 'Cloud Backup', path: '/backup', icon: Cloud },
-    { name: 'Reporting', path: '/reporting', icon: Activity },
-    { name: 'SSO Applications', path: '/admin/sso', icon: Server },
-    { name: 'Admin', path: '/admin', icon: Settings },
+    { name: 'Alert Rules', path: '/alerts', icon: Bell },
+    { name: 'SSO Applications', path: '/admin/sso', icon: Server, adminOnly: true },
+    { name: 'Controls (Admin)', path: '/admin/controls', icon: Settings, adminOnly: true },
   ];
 
   return (
@@ -36,7 +36,7 @@ export function Navigation() {
       </div>
       
       <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
+        {navItems.filter(item => !item.adminOnly || (user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN')).map((item) => (
           <NavLink
             key={item.name}
             to={item.path}
