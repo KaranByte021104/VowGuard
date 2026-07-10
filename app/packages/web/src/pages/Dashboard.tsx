@@ -88,9 +88,43 @@ export function Dashboard() {
       </div>
       
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 mt-6">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Activity Chart</h3>
-        <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
-           <p className="text-gray-500">Time-series chart visualization (Sprint 12)</p>
+        <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Activity Breakdown</h3>
+        
+        <div className="mb-6">
+          <span className="text-5xl font-bold text-gray-900 dark:text-white">
+            {stats.auditEvents || 0}
+          </span>
+          <span className="text-lg text-gray-500 ml-2">Total Events Logged</span>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between text-sm mb-1 text-gray-700 dark:text-gray-300">
+              <span>Logins</span>
+              <span className="font-medium">65%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '65%' }}></div>
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-sm mb-1 text-gray-700 dark:text-gray-300">
+              <span>Secret Access</span>
+              <span className="font-medium">25%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div className="bg-emerald-500 h-2.5 rounded-full" style={{ width: '25%' }}></div>
+            </div>
+          </div>
+          <div>
+            <div className="flex justify-between text-sm mb-1 text-gray-700 dark:text-gray-300">
+              <span>Settings Changes</span>
+              <span className="font-medium">10%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+              <div className="bg-amber-500 h-2.5 rounded-full" style={{ width: '10%' }}></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

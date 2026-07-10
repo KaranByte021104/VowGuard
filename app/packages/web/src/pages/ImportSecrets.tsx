@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSessionStore } from '../store/session';
 import { generateItemKey, encryptSecretPayload, encryptItemKeyWithPublicKey } from '@app/shared/src/crypto';
-import { Upload, FileText, AlertCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, ArrowLeft } from 'lucide-react';
 
 export function ImportSecrets() {
   const navigate = useNavigate();
@@ -90,7 +90,12 @@ export function ImportSecrets() {
 
   return (
     <div className="max-w-2xl mx-auto p-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Import Secrets</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => navigate(-1)} className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Import Secrets</h1>
+      </div>
       
       <div className="bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700 text-center">
         <Upload className="w-12 h-12 text-primary mx-auto mb-4" />

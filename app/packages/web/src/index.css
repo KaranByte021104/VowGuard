@@ -1,14 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #3b82f6; /* Example: Tailwind Blue 500 */
-  --color-secondary: #10b981; /* Example: Tailwind Emerald 500 */
+  --color-primary: #1e3a8a; /* Deep blue (Tailwind blue-900) */
+  --color-primary-light: #2563eb; /* Brighter accent blue (Tailwind blue-600) */
+  
+  --color-status-success: #10b981; /* Green */
+  --color-status-warning: #f59e0b; /* Amber */
+  --color-status-danger: #ef4444; /* Red */
+  
+  --font-sans: "Inter", "Roboto", "Helvetica Neue", "Arial", sans-serif;
 }
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  @apply bg-gray-50 text-gray-900 antialiased font-sans;
 }
 
 .dark body {

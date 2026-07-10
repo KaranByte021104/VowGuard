@@ -350,8 +350,19 @@ export function SecretsList() {
               ))}
               {filteredSecrets.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
-                    No secrets found in this folder.
+                  <td colSpan={4} className="px-6 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full">
+                        <Key className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <div className="text-gray-900 dark:text-white font-medium text-lg">No secrets found here</div>
+                      <p className="text-gray-500 max-w-sm text-sm">
+                        {selectedFolderId ? "This folder is empty. You can add new secrets here or move existing ones." : "Your vault is empty. Add a new secret to get started securely storing your passwords."}
+                      </p>
+                      <Link to={`/secrets/new${selectedFolderId ? `?folderId=${selectedFolderId}` : ''}`} className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 font-medium">
+                        <Plus className="w-4 h-4" /> Add Secret
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               )}

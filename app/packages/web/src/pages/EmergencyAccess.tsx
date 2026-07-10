@@ -200,9 +200,20 @@ export function EmergencyAccess() {
 
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
             {designatedContacts.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <ShieldAlert className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p>No emergency contacts set up yet.</p>
+              <div className="p-8 text-center flex flex-col items-center">
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-4">
+                  <ShieldAlert className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-gray-900 dark:text-white font-medium text-lg mb-2">No emergency contacts set up</h3>
+                <p className="text-gray-500 max-w-sm text-sm mb-4">
+                  Ensure you don't lose access to your vault. Designate a trusted contact who can access your account if you become unavailable.
+                </p>
+                <button 
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 font-medium"
+                >
+                  <Plus className="w-4 h-4" /> Add Emergency Contact
+                </button>
               </div>
             ) : (
               designatedContacts.map(grant => (
@@ -266,8 +277,14 @@ export function EmergencyAccess() {
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Emergency Access Trusted By</h2>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 divide-y divide-gray-200 dark:divide-gray-700">
             {receivedGrants.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <p>No one has added you as an emergency contact.</p>
+              <div className="p-8 text-center flex flex-col items-center">
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full mb-4">
+                  <User className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-gray-900 dark:text-white font-medium text-lg mb-2">No emergency access granted to you</h3>
+                <p className="text-gray-500 max-w-sm text-sm">
+                  When someone adds you as their emergency contact, their access grants will appear here.
+                </p>
               </div>
             ) : (
               receivedGrants.map(grant => (

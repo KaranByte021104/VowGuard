@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSessionStore } from '../store/session';
 import { generateItemKey, encryptSecretPayload, encryptItemKeyWithPublicKey } from '@app/shared/src/crypto';
 import { PasswordGenerator } from '../components/PasswordGenerator';
-import { Shield, Eye, EyeOff } from 'lucide-react';
+import { Shield, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import zxcvbn from 'zxcvbn';
 
 const SITE_CATALOG = [
@@ -157,7 +157,12 @@ export function AddSecret() {
 
   return (
     <div className="max-w-3xl mx-auto p-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Add Secret</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <button onClick={() => navigate(-1)} className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors">
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Add Secret</h1>
+      </div>
 
       <div className="mb-8">
         <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Quick Add from Catalog</h2>

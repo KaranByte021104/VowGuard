@@ -6,6 +6,7 @@ interface ModalProps {
   title: string;
   message?: string;
   mode?: 'confirm' | 'prompt' | 'custom';
+  position?: 'center' | 'right';
   promptPlaceholder?: string;
   confirmText?: string;
   confirmColor?: 'red' | 'primary';
@@ -18,7 +19,8 @@ export function Modal({
   onClose, 
   title, 
   message, 
-  mode = 'confirm', 
+  mode = 'confirm',
+  position = 'center',
   promptPlaceholder, 
   confirmText = 'Confirm', 
   confirmColor = 'primary',
@@ -44,10 +46,19 @@ export function Modal({
     ? 'bg-red-600 hover:bg-red-700' 
     : 'bg-primary hover:bg-blue-700';
 
+  const containerClasses = position === 'right'
+    ? 'fixed inset-y-0 right-0 z-[100] flex w-full max-w-md flex-col bg-white dark:bg-gray-800 shadow-2xl animate-in slide-in-from-right'
+    : 'bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-full max-w-sm animate-in zoom-in-95';
+
+  const wrapperClasses = position === 'right'
+    ? 'fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-sm transition-opacity'
+    : 'fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity';
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={handleClose}>
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-full max-w-sm" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
+    <div className={wrapperClasses} onClick={handleClose}>
+      <div className={containerClasses} onClick={e => e.stopPropagation()}>
+        <div className={position === 'right' ? 'p-6 flex-grow overflow-y-auto' : ''}>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
         {message && <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{message}</p>}
         
         {mode === 'prompt' && (
@@ -77,6 +88,7 @@ export function Modal({
             </button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
