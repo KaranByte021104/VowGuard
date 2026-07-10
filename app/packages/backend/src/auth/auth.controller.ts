@@ -1,4 +1,5 @@
 import { Controller, Post, Body, Res, Req, UnauthorizedException, Get, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response, Request } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -34,6 +35,7 @@ export class AuthController {
     return { user: result.user };
   }
 
+  @Throttle({ default: { limit: 5, ttl: 900000 } })
   @Post('login')
   async login(@Body() body: any, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(body);
@@ -80,6 +82,7 @@ export class AuthController {
     return { success: true };
   }
 
+  @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @Post('reset-password/request')
   async requestPasswordReset(@Body() body: any) {
     // Generate token, send mock email

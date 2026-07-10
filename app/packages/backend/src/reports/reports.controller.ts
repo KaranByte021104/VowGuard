@@ -1,4 +1,5 @@
 import { Controller, Get, Req, UseGuards, Res, Query, BadRequestException } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ReportsService } from './reports.service';
 import PDFDocument from 'pdfkit';
@@ -15,6 +16,7 @@ export class ReportsController {
     return this.reportsService.getDashboardStats(req.user.organizationId);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 3600000 } })
   @Get('export')
   async exportReport(@Req() req, @Res() res: Response, @Query('format') format: string) {
     const data = await this.reportsService.getDashboardStats(req.user.organizationId);

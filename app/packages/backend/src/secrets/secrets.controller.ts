@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Req, SetMetadata } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { SecretsService } from './secrets.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SharePermissionGuard } from '../auth/share-permission.guard';
@@ -19,6 +20,7 @@ export class SecretsController {
     return this.secretsService.getSecrets(req.user.id, req.user.organizationId);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 3600000 } })
   @Get('export')
   @UseGuards(ControlsGuard)
   @RequireControl('EXPORT_SECRETS')

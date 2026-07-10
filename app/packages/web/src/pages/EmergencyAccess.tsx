@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ShieldAlert, Trash2, Plus, Clock, User, AlertTriangle } from 'lucide-react';
 import { useSessionStore } from '../store/session';
 import { Modal } from '../components/Modal';

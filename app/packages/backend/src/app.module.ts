@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -36,6 +37,10 @@ import { ControlsModule } from './controls/controls.module';
         port: parseInt(process.env.REDIS_PORT || '6379'),
       },
     }),
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 100, // Global limit: 100 requests per minute
+    }]),
     AuthModule,
     UsersModule,
     SecretsModule,
@@ -59,6 +64,10 @@ import { ControlsModule } from './controls/controls.module';
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: AuditInterceptor,
