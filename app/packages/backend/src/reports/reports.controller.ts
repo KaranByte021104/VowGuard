@@ -16,6 +16,36 @@ export class ReportsController {
     return this.reportsService.getDashboardStats(req.user.organizationId);
   }
 
+  @Get('user-access')
+  getUserAccessReport(@Req() req) {
+    return this.reportsService.getUserAccessReport(req.user.organizationId);
+  }
+
+  @Get('password-assessment')
+  getPasswordAssessmentReport(@Req() req) {
+    return this.reportsService.getPasswordAssessmentReport(req.user.organizationId);
+  }
+
+  @Get('folder-access')
+  getFolderAccessReport(@Req() req) {
+    return this.reportsService.getFolderAccessReport(req.user.organizationId);
+  }
+
+  @Get('sharing-summaries')
+  getSharingSummariesReport(@Req() req) {
+    return this.reportsService.getSharingSummariesReport(req.user.organizationId);
+  }
+
+  @Get('inactivity')
+  getInactivityReport(@Req() req) {
+    return this.reportsService.getInactivityReport(req.user.organizationId);
+  }
+
+  @Get('activity-logs')
+  getActivityLogsReport(@Req() req) {
+    return this.reportsService.getActivityLogsReport(req.user.organizationId);
+  }
+
   @Throttle({ default: { limit: 10, ttl: 3600000 } })
   @Get('export')
   async exportReport(@Req() req, @Res() res: Response, @Query('format') format: string) {

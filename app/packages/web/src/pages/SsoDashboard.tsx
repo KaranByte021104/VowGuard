@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSessionStore } from '../store/session';
-import { Plus, CheckCircle, ChevronRight, Download, Server, X } from 'lucide-react';
+import { Plus, Server, Download } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
 export function SsoDashboard() {

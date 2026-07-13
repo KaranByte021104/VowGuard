@@ -11,12 +11,16 @@ export function Login() {
     email: '',
     loginPassword: '',
     masterPassword: '',
+    mfaToken: '',
+    resetToken: '',
+    newPassword: '',
   });
   const [encryptedPrivateKey, setEncryptedPrivateKey] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showMasterPassword, setShowMasterPassword] = useState(false);
+  const [tempToken, setTempToken] = useState('');
 
   const [userPayload, setUserPayload] = useState<any>(null);
   const { setKeys, setUser } = useSessionStore();
@@ -42,7 +46,49 @@ export function Login() {
       });
 
       if (!response.ok) {
-        throw new Error('Invalid credentials');
+        let errStr = 'Invalid credentials';
+        try {
+          const errData = await response.json();
+          errStr = errData.message || errStr;
+        } catch(e) {}
+        throw new Error(errStr);
+      }
+
+      const data = await response.json();
+      
+      if (data.mfaRequired) {
+        setTempToken(data.tempToken);
+        setStep(1.5);
+      } else {
+        setEncryptedPrivateKey(data.user.encryptedPrivateKey);
+        setUserPayload(data.user);
+        setStep(2); // Move to master password unlock
+      }
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:3000/auth/login/mfa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          tempToken,
+          token: formData.mfaToken,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid MFA token');
       }
 
       const data = await response.json();
@@ -50,7 +96,7 @@ export function Login() {
       setUserPayload(data.user);
       setStep(2); // Move to master password unlock
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'MFA validation failed');
     } finally {
       setLoading(false);
     }
@@ -102,18 +148,69 @@ export function Login() {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    
+    try {
+      const res = await fetch('http://localhost:3000/auth/reset-password/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email })
+      });
+      if (!res.ok) throw new Error('Failed to request reset');
+      alert('If the email exists, a reset link has been sent to your inbox.');
+      setStep(4); // Move to token entry
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch('http://localhost:3000/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          token: formData.resetToken,
+          newPassword: formData.newPassword
+        })
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Failed to reset password');
+      }
+      
+      alert('Password reset successfully. You can now log in.');
+      setStep(1);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Shield className="mx-auto h-12 w-12 text-primary" />
         <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-          {step === 1 ? 'Sign in to your Vault' : 'Unlock Vault'}
+          {step === 1 ? 'Sign in to your Vault' : step === 1.5 ? 'Two-Factor Authentication' : step === 2 ? 'Unlock Vault' : step === 3 ? 'Reset Password' : 'New Password'}
         </h2>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={step === 1 ? handleLoginSubmit : handleUnlockSubmit}>
+          <form className="space-y-6" onSubmit={step === 1 ? handleLoginSubmit : step === 1.5 ? handleMfaSubmit : handleUnlockSubmit}>
             {error && <div className="text-red-600 text-sm bg-red-50 p-3 rounded">{error}</div>}
             
             {step === 1 ? (
@@ -122,9 +219,14 @@ export function Login() {
                   <label className="block text-sm font-medium text-gray-700">Email</label>
                   <input name="email" type="email" value={formData.email} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
                 </div>
-                <div className="relative">
+                <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">Login Password</label>
-                  <input name="loginPassword" value={formData.loginPassword} type={showLoginPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
+                  <button type="button" onClick={() => setStep(3)} className="text-sm font-medium text-primary hover:text-blue-500">
+                    Forgot Password?
+                  </button>
+                </div>
+                <div className="relative">
+                  <input name="loginPassword" value={formData.loginPassword} type={showLoginPassword ? "text" : "password"} required className="block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
                   <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute bottom-2 right-3 flex items-center text-gray-400 hover:text-gray-600">
                     {showLoginPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -139,7 +241,22 @@ export function Login() {
                   </button>
                 </div>
               </>
-            ) : (
+            ) : step === 1.5 ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Authenticator Code</label>
+                  <input name="mfaToken" type="text" placeholder="000000" maxLength={6} value={formData.mfaToken} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 text-center text-lg tracking-widest font-mono" onChange={handleChange} />
+                </div>
+                <button type="submit" disabled={loading || formData.mfaToken.length !== 6} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700">
+                  {loading ? 'Verifying...' : 'Verify'}
+                </button>
+                <div className="mt-4 text-center">
+                  <button type="button" onClick={() => setStep(1)} className="text-sm text-gray-600 hover:text-gray-900">
+                    Back to Login
+                  </button>
+                </div>
+              </>
+            ) : step === 2 ? (
               <>
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700">Master Password</label>
@@ -151,6 +268,49 @@ export function Login() {
                 <button type="submit" disabled={loading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700">
                   {loading ? 'Unlocking...' : 'Unlock Vault'}
                 </button>
+              </>
+            ) : step === 3 ? (
+              <>
+                <p className="text-sm text-gray-600 mb-4">Enter your email address and we'll send you a link to reset your password.</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input name="email" type="email" value={formData.email} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
+                </div>
+                <button type="button" onClick={handleForgotPassword} disabled={loading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700">
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </button>
+                <div className="mt-4 text-center">
+                  <button type="button" onClick={() => setStep(1)} className="text-sm text-gray-600 hover:text-gray-900">
+                    Back to Login
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-4">Check your email for the reset token and enter your new login password.</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input name="email" type="email" value={formData.email} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50" readOnly />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Reset Token</label>
+                  <input name="resetToken" type="text" value={formData.resetToken} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 font-mono text-sm" onChange={handleChange} placeholder="Paste your 64-character token here" />
+                </div>
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700">New Login Password</label>
+                  <input name="newPassword" value={formData.newPassword} type={showLoginPassword ? "text" : "password"} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 pr-10" onChange={handleChange} />
+                  <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute bottom-2 right-3 flex items-center text-gray-400 hover:text-gray-600">
+                    {showLoginPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                <button type="button" onClick={handleResetPassword} disabled={loading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700">
+                  {loading ? 'Resetting...' : 'Confirm New Password'}
+                </button>
+                <div className="mt-4 text-center">
+                  <button type="button" onClick={() => setStep(1)} className="text-sm text-gray-600 hover:text-gray-900">
+                    Back to Login
+                  </button>
+                </div>
               </>
             )}
           </form>

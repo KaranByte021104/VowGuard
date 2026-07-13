@@ -62,17 +62,10 @@ export class UsersService {
       }
     }
 
-    // Perform removal with trigger bypass
-    try {
-      await this.prisma.$executeRaw`ALTER TABLE "AuditLog" DISABLE TRIGGER ALL;`;
-      
-      await this.prisma.user.delete({
-        where: { id: targetUserId }
-      });
-      
-    } finally {
-      await this.prisma.$executeRaw`ALTER TABLE "AuditLog" ENABLE TRIGGER ALL;`;
-    }
+    // Prisma's onDelete: SetNull on AuditLog relation handles keeping the log intact
+    await this.prisma.user.delete({
+      where: { id: targetUserId }
+    });
 
     return { message: 'User removed successfully' };
   }

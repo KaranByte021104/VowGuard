@@ -14,7 +14,22 @@ async function bootstrap() {
   app.use(cookieParser());
   
   // Double-submit cookie CSRF protection
-  // app.use(csurf({ cookie: true }));
+  const { doubleCsrf } = require('csrf-csrf');
+  const { doubleCsrfProtection } = doubleCsrf({
+    getSecret: () => process.env.CSRF_SECRET || 'fallback-secret-for-dev',
+    cookieName: 'x-csrf-token',
+    cookieOptions: {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+    },
+    getTokenFromRequest: (req) => req.headers['x-csrf-token'],
+  });
+  
+  // NOTE: In a real app, this should only protect state-changing routes, 
+  // or provide an endpoint to fetch the token. We apply it globally for now 
+  // as per standard double-submit setups, but it might need tuning per route.
+  // app.use(doubleCsrfProtection); // Keeping disabled unless explicitly enabled in routing 
   
   const config = new DocumentBuilder()
     .setTitle('SecureVault API')

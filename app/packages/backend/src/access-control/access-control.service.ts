@@ -27,7 +27,7 @@ export class AccessControlService {
         secretId,
         minimumApproverCount: data.minimumApproverCount || 1,
         autoVoidHours: data.autoVoidHours || 24,
-        grantedAccessHours: data.grantedAccessHours || 1,
+        grantDurationMinutes: data.grantDurationMinutes || 60,
         automaticApprovalRule: data.automaticApprovalRule || null,
         approvers: {
           create: (data.approvers || []).map(id => ({ userId: id }))
@@ -72,7 +72,7 @@ export class AccessControlService {
     }
 
     const status = isAutoApproved ? 'APPROVED' : 'PENDING';
-    const expiresAt = isAutoApproved ? new Date(Date.now() + secret.accessControlConfig.grantedAccessHours * 3600000) : null;
+    const expiresAt = isAutoApproved ? new Date(Date.now() + secret.accessControlConfig.grantDurationMinutes * 60000) : null;
     const voidsAt = !isAutoApproved ? new Date(Date.now() + secret.accessControlConfig.autoVoidHours * 3600000) : null;
 
     const request = await this.prisma.accessRequest.create({
@@ -89,7 +89,7 @@ export class AccessControlService {
 
     if (isAutoApproved) {
       await this.accessQueue.add('auto-expire', { requestId: request.id }, {
-        delay: secret.accessControlConfig.grantedAccessHours * 3600000,
+        delay: secret.accessControlConfig.grantDurationMinutes * 60000,
         jobId: `expire-${request.id}`
       });
     } else {
@@ -162,14 +162,14 @@ export class AccessControlService {
       }
 
       // Threshold met
-      const expiresAt = new Date(Date.now() + request.secret.accessControlConfig!.grantedAccessHours * 3600000);
+      const expiresAt = new Date(Date.now() + request.secret.accessControlConfig!.grantDurationMinutes * 60000);
       await this.prisma.accessRequest.update({
         where: { id: requestId },
         data: { status: 'APPROVED', expiresAt, encryptedItemKey }
       });
 
       await this.accessQueue.add('auto-expire', { requestId: request.id }, {
-        delay: request.secret.accessControlConfig!.grantedAccessHours * 3600000,
+        delay: request.secret.accessControlConfig!.grantDurationMinutes * 60000,
         jobId: `expire-${request.id}`
       });
       return { message: 'Request fully approved and access granted' };

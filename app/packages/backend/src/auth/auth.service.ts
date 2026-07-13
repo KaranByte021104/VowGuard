@@ -3,22 +3,26 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
+import * as speakeasy from 'speakeasy';
+import * as QRCode from 'qrcode';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
-    private jwtService: JwtService
+    private jwtService: JwtService,
+    private mailerService: MailerService
   ) {}
 
   // Generates Access and Refresh Tokens
-  async generateTokens(userId: string) {
+  async generateTokens(userId: string, existingFamilyId?: string) {
     const accessToken = this.jwtService.sign({ sub: userId }, { expiresIn: '15m' });
     
     // Generate a secure random token for refresh
     const rawRefreshToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = await argon2.hash(rawRefreshToken);
-    const familyId = crypto.randomUUID();
+    const tokenHash = crypto.createHash('sha256').update(rawRefreshToken).digest('hex');
+    const familyId = existingFamilyId || crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     await this.prisma.refreshToken.create({
@@ -119,7 +123,7 @@ export class AuthService {
 
     if (user.mfaType !== 'NONE') {
       // Need MFA verification
-      const tempToken = this.jwtService.sign({ sub: user.id, mfaPending: true }, { expiresIn: '5m' });
+      const tempToken = this.jwtService.sign({ sub: user.id, isMfaTemp: true }, { expiresIn: '5m' });
       return { mfaRequired: true, tempToken };
     }
 
@@ -132,14 +136,38 @@ export class AuthService {
   }
 
   async refresh(oldRefreshToken: string) {
-    // Find the token in the DB by comparing hashes (simplification: in reality you might need a token ID to look it up, or search and verify)
-    // For this example, we will find all tokens for the user, but we don't have the user ID.
-    // A better approach is to send { userId, token } or store the raw token in a fast lookup table, 
-    // but here we just simulate finding it by storing it directly since it's an example.
+    const tokenHash = crypto.createHash('sha256').update(oldRefreshToken).digest('hex');
     
-    // Simplification for the example: finding by raw token since hashing makes lookup slow
-    // Wait, the prompt says token is hashed. Let's assume we decode a familyId from the cookie.
-    throw new BadRequestException('Not fully implemented in this stub');
+    const tokenRecord = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash }
+    });
+
+    if (!tokenRecord) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (tokenRecord.expiresAt < new Date()) {
+      throw new UnauthorizedException('Refresh token expired');
+    }
+
+    // Reuse detection
+    if (tokenRecord.isRevoked) {
+      // Token theft detected! Revoke entire family.
+      await this.prisma.refreshToken.updateMany({
+        where: { familyId: tokenRecord.familyId },
+        data: { isRevoked: true }
+      });
+      throw new UnauthorizedException('Security alert: Token reuse detected. All sessions revoked.');
+    }
+
+    // Revoke the old token
+    await this.prisma.refreshToken.update({
+      where: { id: tokenRecord.id },
+      data: { isRevoked: true }
+    });
+
+    // Generate new token pair in the same family
+    return this.generateTokens(tokenRecord.userId, tokenRecord.familyId);
   }
 
   async revokeAllUserSessions(userId: string) {
@@ -149,8 +177,120 @@ export class AuthService {
     });
   }
 
-  // Dummy MFA Setup (for TOTP)
   async generateTotpSecret(userId: string) {
-    return { secret: 'dummy_secret', qrCode: 'dummy_qr_code_url' };
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException();
+
+    const secret = speakeasy.generateSecret({ name: `VowGuard (${user.email})` });
+    const qrCode = await QRCode.toDataURL(secret.otpauth_url!);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { mfaSecret: secret.base32 } // Stored temporarily until verified
+    });
+
+    return { secret: secret.base32, qrCode };
+  }
+
+  async verifyTotpSetup(userId: string, token: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.mfaSecret) throw new BadRequestException('MFA setup not initiated');
+
+    const isValid = speakeasy.totp.verify({ token, secret: user.mfaSecret, encoding: 'base32' });
+    if (!isValid) throw new UnauthorizedException('Invalid verification code');
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { mfaType: 'TOTP' }
+    });
+
+    return { success: true };
+  }
+
+  async loginWithMfa(tempToken: string, token: string) {
+    try {
+      const decoded = this.jwtService.verify(tempToken) as any;
+      if (!decoded.isMfaTemp) throw new Error();
+
+      const user = await this.prisma.user.findUnique({ where: { id: decoded.sub } });
+      if (!user || !user.mfaSecret) throw new Error();
+
+      const isValid = speakeasy.totp.verify({ token, secret: user.mfaSecret, encoding: 'base32' });
+      if (!isValid) throw new UnauthorizedException('Invalid MFA token');
+
+      const tokens = await this.generateTokens(user.id);
+      return {
+        ...tokens,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          organizationId: user.organizationId,
+          publicKey: user.publicKey,
+          encryptedPrivateKey: user.encryptedPrivateKey,
+        }
+      };
+    } catch (e) {
+      if (e instanceof UnauthorizedException) throw e;
+      throw new UnauthorizedException('Invalid or expired MFA session');
+    }
+  }
+
+  async requestPasswordReset(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) return { message: 'If the email exists, a reset link has been sent.' }; // Do not leak email existence
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const hash = crypto.createHash('sha256').update(token).digest('hex');
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordResetToken: hash, passwordResetExpires: expires }
+    });
+
+    try {
+      await this.mailerService.sendMail({
+        to: user.email,
+        subject: 'Password Reset Request',
+        text: `Use this token to reset your password: ${token}\nThis token expires in 15 minutes.`,
+      });
+    } catch (e) {
+      console.error('Failed to send email via SMTP, logging token for dev:', token);
+    }
+
+    return { message: 'If the email exists, a reset link has been sent.' };
+  }
+
+  async resetPassword(data: any) {
+    const hash = crypto.createHash('sha256').update(data.token).digest('hex');
+    
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: data.email,
+        passwordResetToken: hash,
+        passwordResetExpires: { gt: new Date() }
+      }
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const loginPasswordHash = await argon2.hash(data.newPassword);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        loginPassword: loginPasswordHash,
+        passwordResetToken: null,
+        passwordResetExpires: null,
+      }
+    });
+
+    // Invalidate all existing sessions
+    await this.revokeAllUserSessions(user.id);
+
+    return { success: true };
   }
 }

@@ -4,6 +4,7 @@ export interface User {
   id: string;
   email: string;
   role: string;
+  organizationId: string;
   publicKey?: string; // base64 SPKI
   encryptedPrivateKey?: string;
 }

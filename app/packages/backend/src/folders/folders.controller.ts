@@ -36,4 +36,13 @@ export class FoldersController {
   removeSecretFromFolder(@Request() req, @Param('id') id: string, @Param('secretId') secretId: string) {
     return this.foldersService.removeSecretFromFolder(id, secretId, req.user.organizationId, req.user.id);
   }
+
+  @Post(':id/share')
+  shareFolder(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() body: { recipientUserId: string; permission: any; encryptedItemKeys: Record<string, string> }
+  ) {
+    return this.foldersService.shareFolder(id, body.recipientUserId, body.permission, body.encryptedItemKeys, req.user.organizationId, req.user.id);
+  }
 }

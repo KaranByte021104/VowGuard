@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Cloud, CheckCircle, Clock, AlertTriangle, Download, RefreshCw, XCircle } from 'lucide-react';
-import { useSessionStore } from '../store/session';
+import { Cloud, CheckCircle, Clock, Download } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
 
@@ -20,7 +19,6 @@ interface BackupFile {
 }
 
 export function CloudBackup() {
-  const { masterKey } = useSessionStore();
   const [config, setConfig] = useState<BackupConfig | null>(null);
   const [files, setFiles] = useState<BackupFile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,7 +138,22 @@ export function CloudBackup() {
             return;
           }
           
-          showAlert('Restore Successful', `Successfully downloaded backup with ${data.length} items. In a full restore flow, these would now be decrypted locally and re-created via POST /secrets.`);
+          let successCount = 0;
+          for (const item of data) {
+            try {
+              const postRes = await fetch('http://localhost:3000/secrets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(item) // Note: In a full real flow, we might need to re-encrypt with a new itemKey or re-use it. Since backup has encryptedData, we can just push it back.
+              });
+              if (postRes.ok) successCount++;
+            } catch (e) {
+              console.error('Failed to restore item', e);
+            }
+          }
+          
+          showAlert('Restore Successful', `Successfully restored ${successCount} out of ${data.length} items from backup.`);
         } catch (e) {
           showAlert('Error', 'Failed to download backup');
           console.error(e);

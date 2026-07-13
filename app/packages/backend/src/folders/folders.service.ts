@@ -86,4 +86,41 @@ export class FoldersService {
       where: { folderId, secretId }
     });
   }
+
+  async shareFolder(
+    folderId: string,
+    recipientUserId: string,
+    permission: any,
+    encryptedItemKeys: Record<string, string>,
+    organizationId: string,
+    userId: string
+  ) {
+    const folder = await this.prisma.folder.findFirst({
+      where: { id: folderId, organizationId, ownerId: userId },
+      include: { secrets: true }
+    });
+    if (!folder) throw new NotFoundException('Folder not found or you do not own it');
+
+    // Create a share for each secret in the folder that the user has provided a key for
+    const sharesToCreate: any[] = [];
+    for (const fs of folder.secrets) {
+      if (encryptedItemKeys[fs.secretId]) {
+        sharesToCreate.push({
+          secretId: fs.secretId,
+          recipientUserId,
+          permission,
+          encryptedItemKey: encryptedItemKeys[fs.secretId]
+        });
+      }
+    }
+
+    if (sharesToCreate.length > 0) {
+      await this.prisma.secretShare.createMany({
+        data: sharesToCreate,
+        skipDuplicates: true
+      });
+    }
+
+    return { success: true, sharesCreated: sharesToCreate.length };
+  }
 }

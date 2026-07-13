@@ -113,35 +113,48 @@ export function SecretsList() {
 
   const handleExport = async () => {
     if (!secrets || !privateKey) return;
-    // Client-side decryption for export
-    const decryptedData = await Promise.all(secrets.map(async (secret: any) => {
-      try {
-        let keyToUse = secret.encryptedItemKey;
-        if (user && secret.ownerId !== user.id) {
-          const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
-          if (myShare) keyToUse = myShare.encryptedItemKey;
-        }
-        const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
-        const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
-        
-        const encryptedDataBuf = Uint8Array.from(atob(secret.encryptedData), c => c.charCodeAt(0)).buffer;
-        const ivBuf = Uint8Array.from(atob(secret.iv), c => c.charCodeAt(0));
-        
-        const payload = await decryptSecretPayload(encryptedDataBuf, ivBuf, itemKey);
-        return { name: secret.name, domain: secret.domain, ...payload };
-      } catch (e) {
-        return { name: secret.name, error: 'Decryption failed' };
-      }
-    }));
     
-    const jsonStr = JSON.stringify(decryptedData, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'vault_export.json';
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      // Use the gated export endpoint to enforce fine-grained controls
+      const res = await fetch('http://localhost:3000/secrets/export', { credentials: 'include' });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Export restricted or failed');
+      }
+      const dataToExport = await res.json();
+
+      // Client-side decryption for export
+      const decryptedData = await Promise.all(dataToExport.map(async (secret: any) => {
+        try {
+          let keyToUse = secret.encryptedItemKey;
+          if (user && secret.ownerId !== user.id) {
+            const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
+            if (myShare) keyToUse = myShare.encryptedItemKey;
+          }
+          const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
+          const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
+          
+          const encryptedDataBuf = Uint8Array.from(atob(secret.encryptedData), c => c.charCodeAt(0)).buffer;
+          const ivBuf = Uint8Array.from(atob(secret.iv), c => c.charCodeAt(0));
+          
+          const payload = await decryptSecretPayload(encryptedDataBuf, ivBuf, itemKey);
+          return { name: secret.name, domain: secret.domain, ...payload };
+        } catch (e) {
+          return { name: secret.name, error: 'Decryption failed' };
+        }
+      }));
+      
+      const jsonStr = JSON.stringify(decryptedData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'vault_export.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert(`Export Failed: ${e.message}`);
+    }
   };
 
   // Decrypt all secrets

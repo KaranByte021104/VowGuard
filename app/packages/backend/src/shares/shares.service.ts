@@ -118,4 +118,56 @@ export class SharesService {
       }
     });
   }
+  async shareSecretWithGroup(
+    secretId: string,
+    groupId: string,
+    permission: SharePermission,
+    encryptedItemKeys: Record<string, string>,
+    userId: string,
+    organizationId: string
+  ) {
+    await this.checkCanManageSecret(secretId, userId, organizationId);
+
+    const group = await this.prisma.userGroup.findFirst({
+      where: { id: groupId, organizationId },
+      include: { members: true }
+    });
+
+    if (!group) throw new NotFoundException('Group not found');
+
+    const sharesToCreate = group.members
+      .filter(m => encryptedItemKeys[m.userId])
+      .map(m => ({
+        secretId,
+        recipientUserId: m.userId,
+        permission,
+        encryptedItemKey: encryptedItemKeys[m.userId],
+        groupShareSourceId: group.id
+      }));
+
+    if (sharesToCreate.length === 0) return { success: true, count: 0 };
+
+    // Atomic transaction
+    await this.prisma.$transaction(async (tx) => {
+      for (const shareData of sharesToCreate) {
+        const existing = await tx.secretShare.findFirst({
+          where: { secretId: shareData.secretId, recipientUserId: shareData.recipientUserId }
+        });
+        if (existing) {
+          await tx.secretShare.update({
+            where: { id: existing.id },
+            data: {
+              permission: shareData.permission,
+              encryptedItemKey: shareData.encryptedItemKey,
+              groupShareSourceId: shareData.groupShareSourceId
+            }
+          });
+        } else {
+          await tx.secretShare.create({ data: shareData });
+        }
+      }
+    });
+
+    return { success: true, count: sharesToCreate.length };
+  }
 }

@@ -6,14 +6,7 @@ import { PasswordGenerator } from '../components/PasswordGenerator';
 import { Shield, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import zxcvbn from 'zxcvbn';
 
-const SITE_CATALOG = [
-  { name: 'Google', domain: 'google.com', templateType: 'WEBSITE' },
-  { name: 'GitHub', domain: 'github.com', templateType: 'WEBSITE' },
-  { name: 'AWS', domain: 'aws.amazon.com', templateType: 'WEBSITE' },
-  { name: 'Slack', domain: 'slack.com', templateType: 'WEBSITE' },
-  { name: 'Twitter / X', domain: 'x.com', templateType: 'WEBSITE' },
-  { name: 'DigitalOcean', domain: 'digitalocean.com', templateType: 'SERVER' },
-];
+import { useQuery } from '@tanstack/react-query';
 
 export function AddSecret() {
   const navigate = useNavigate();
@@ -33,6 +26,15 @@ export function AddSecret() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showGenerator, setShowGenerator] = useState(false);
+
+  const { data: siteCatalog } = useQuery({
+    queryKey: ['siteCatalog'],
+    queryFn: async () => {
+      const res = await fetch('http://localhost:3000/site-catalog');
+      if (!res.ok) throw new Error('Failed to fetch site catalog');
+      return res.json();
+    }
+  });
 
   const passwordScore = zxcvbn(formData.password).score;
 
@@ -56,7 +58,7 @@ export function AddSecret() {
     setFormData({ ...formData, [e.target.name]: value });
   };
 
-  const handleCatalogSelect = (site: typeof SITE_CATALOG[0]) => {
+  const handleCatalogSelect = (site: any) => {
     setFormData({
       ...formData,
       name: site.name,
@@ -167,9 +169,9 @@ export function AddSecret() {
       <div className="mb-8">
         <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Quick Add from Catalog</h2>
         <div className="flex flex-wrap gap-2">
-          {SITE_CATALOG.map(site => (
+          {(siteCatalog || []).map((site: any) => (
             <button
-              key={site.name}
+              key={site.id || site.name}
               type="button"
               onClick={() => handleCatalogSelect(site)}
               className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-700 transition-colors"

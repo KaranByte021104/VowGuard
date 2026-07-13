@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule } from '@nestjs/config';
@@ -27,6 +27,7 @@ import { AuditInterceptor } from './audit/audit.interceptor';
 import { ReportsModule } from './reports/reports.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { ControlsModule } from './controls/controls.module';
+import { TenantMiddleware } from './tenant/tenant.middleware';
 
 @Module({
   imports: [
@@ -87,4 +88,8 @@ import { ControlsModule } from './controls/controls.module';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(TenantMiddleware).forRoutes('*');
+  }
+}

@@ -20,6 +20,7 @@ import { Dashboard } from './pages/Dashboard';
 import { AdminControls } from './pages/AdminControls';
 import { AlertRules } from './pages/AlertRules';
 import { UserManagement } from './pages/UserManagement';
+import { SecuritySettings } from './pages/SecuritySettings';
 import './index.css';
 import App from './App.tsx';
 
@@ -62,6 +63,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="admin/sso" element={<SsoDashboard />} />
             <Route path="admin/users" element={<UserManagement />} />
             <Route path="alerts" element={<AlertRules />} />
+            <Route path="security" element={<SecuritySettings />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -47,4 +47,20 @@ export class SharesController {
   ) {
     return this.sharesService.finalizeThirdPartyInvite(id, body.encryptedItemKey, req.user.organizationId, req.user.id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('group')
+  shareSecretWithGroup(
+    @Request() req,
+    @Body() body: { secretId: string; groupId: string; permission: SharePermission; encryptedItemKeys: Record<string, string> }
+  ) {
+    return this.sharesService.shareSecretWithGroup(
+      body.secretId,
+      body.groupId,
+      body.permission,
+      body.encryptedItemKeys,
+      req.user.id,
+      req.user.organizationId
+    );
+  }
 }

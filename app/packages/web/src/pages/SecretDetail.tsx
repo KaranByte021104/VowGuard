@@ -206,20 +206,34 @@ export function SecretDetail() {
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !secret) return;
+    if (!file || !secret || !privateKey) return;
     if (file.size > 10 * 1024 * 1024) {
       alert('File size exceeds 10 MB limit');
       return;
     }
     
-    // Simplification for sprint: upload plain to the endpoint (in reality, encrypt client-side first)
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('iv', secret.iv);
-    formData.append('encryptedItemKey', secret.encryptedItemKey);
-    
     setLoading(true);
     try {
+      // 1. Get ItemKey
+      const encryptedItemKeyBuf = Uint8Array.from(atob(secret.encryptedItemKey), c => c.charCodeAt(0)).buffer;
+      const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
+      
+      // 2. Encrypt File
+      const fileBuf = await file.arrayBuffer();
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const encryptedFileBuf = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        itemKey,
+        fileBuf
+      );
+      
+      const encryptedFile = new File([encryptedFileBuf], file.name, { type: file.type });
+      
+      const formData = new FormData();
+      formData.append('file', encryptedFile);
+      formData.append('iv', arrayBufferToBase64(iv.buffer));
+      formData.append('encryptedItemKey', secret.encryptedItemKey);
+      
       await fetch(`http://localhost:3000/attachments/${id}`, {
         method: 'POST',
         credentials: 'include',
@@ -228,16 +242,35 @@ export function SecretDetail() {
       setActiveTab('details'); // trigger refresh or something
       setTimeout(() => setActiveTab('attachments'), 50);
     } catch (e) {
+      console.error(e);
       alert('Failed to upload attachment');
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchAndDecryptAttachment = async (att: any) => {
+    if (!privateKey) throw new Error('No private key');
+    const res = await fetch(`http://localhost:3000/attachments/${att.id}/download`, { credentials: 'include' });
+    const encryptedBlob = await res.blob();
+    const encryptedBuf = await encryptedBlob.arrayBuffer();
+    
+    const encryptedItemKeyBuf = Uint8Array.from(atob(att.encryptedItemKey), c => c.charCodeAt(0)).buffer;
+    const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
+    const iv = Uint8Array.from(atob(att.iv), c => c.charCodeAt(0));
+    
+    const decryptedBuf = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      itemKey,
+      encryptedBuf
+    );
+    
+    return new Blob([decryptedBuf], { type: att.mimeType });
+  };
+
   const handlePreviewAttachment = async (att: any) => {
     try {
-      const res = await fetch(`http://localhost:3000/attachments/${att.id}/download`, { credentials: 'include' });
-      const blob = await res.blob();
+      const blob = await fetchAndDecryptAttachment(att);
       
       if (att.mimeType.startsWith('image/')) {
         const url = URL.createObjectURL(blob);
@@ -253,6 +286,22 @@ export function SecretDetail() {
       }
     } catch (e) {
       alert('Failed to load preview');
+    }
+  };
+
+  const handleDownloadAttachment = async (att: any) => {
+    try {
+      const blob = await fetchAndDecryptAttachment(att);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = att.originalName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('Failed to download attachment');
     }
   };
 
@@ -685,9 +734,9 @@ export function SecretDetail() {
                       <button onClick={() => handlePreviewAttachment(att)} className="text-gray-500 hover:text-primary transition-colors" title="Preview">
                         <Eye className="w-4 h-4" />
                       </button>
-                      <a href={`http://localhost:3000/attachments/${att.id}/download`} className="text-gray-500 hover:text-primary transition-colors" title="Download">
+                      <button onClick={() => handleDownloadAttachment(att)} className="text-gray-500 hover:text-primary transition-colors" title="Download">
                         <Download className="w-4 h-4" />
-                      </a>
+                      </button>
                       <button onClick={() => handleDeleteAttachment(att.id)} className="text-gray-500 hover:text-red-600 transition-colors" title="Delete">
                         <Trash className="w-4 h-4" />
                       </button>

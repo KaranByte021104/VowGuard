@@ -1,6 +1,6 @@
-import { Controller, Post, Body, Res, Req, UnauthorizedException, Get, UseGuards } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
-import type { Response, Request } from 'express';
+import { Controller, Post, Body, Res, Req, UnauthorizedException, Get, UseGuards, Request } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import type { Response, Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -21,14 +21,14 @@ export class AuthController {
     res.cookie('access_token', result.accessToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       maxAge: 15 * 60 * 1000,
     });
 
     res.cookie('refresh_token', result.refreshToken, {
       httpOnly: true,
       secure: true,
-      sameSite: 'none',
+      sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -49,14 +49,14 @@ export class AuthController {
       res.cookie('access_token', result.accessToken, {
         httpOnly: true,
         secure: true,
-        sameSite: 'none',
+        sameSite: 'strict',
         maxAge: 15 * 60 * 1000, // 15 mins
       });
 
       res.cookie('refresh_token', result.refreshToken, {
         httpOnly: true,
         secure: true,
-        sameSite: 'none',
+        sameSite: 'strict',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
@@ -65,12 +65,26 @@ export class AuthController {
   }
 
   @Post('refresh')
-  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async refresh(@Req() req: ExpressRequest, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies['refresh_token'];
     if (!refreshToken) throw new UnauthorizedException('No refresh token provided');
 
-    // In a full implementation, this calls this.authService.refresh(refreshToken)
-    // which handles the reuse detection, issues a new token pair, and revokes the old one.
+    const result = await this.authService.refresh(refreshToken);
+
+    res.cookie('access_token', result.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie('refresh_token', result.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     return { success: true };
   }
 
@@ -85,8 +99,47 @@ export class AuthController {
   @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @Post('reset-password/request')
   async requestPasswordReset(@Body() body: any) {
-    // Generate token, send mock email
-    console.log(`Mock Email: Password reset link for ${body.email}`);
-    return { message: 'If the email exists, a reset link has been sent.' };
+    return this.authService.requestPasswordReset(body.email);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() body: any) {
+    return this.authService.resetPassword(body);
+  }
+
+  @Post('mfa/setup')
+  @UseGuards(JwtAuthGuard)
+  async setupMfa(@Request() req: any) {
+    return this.authService.generateTotpSecret(req.user.id);
+  }
+
+  @Post('mfa/verify')
+  @UseGuards(JwtAuthGuard)
+  async verifyMfa(@Request() req: any, @Body() body: { token: string }) {
+    return this.authService.verifyTotpSetup(req.user.id, body.token);
+  }
+
+  @Post('login/mfa')
+  async loginMfa(@Body() body: { tempToken: string, token: string }, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.loginWithMfa(body.tempToken, body.token);
+
+    res.cookie('access_token', result.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 15 * 60 * 1000,
+    });
+
+    res.cookie('refresh_token', result.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return {
+      success: true,
+      user: result.user,
+    };
   }
 }
