@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Cloud, CheckCircle, Clock, Download } from 'lucide-react';
 import { Modal } from '../components/Modal';
+import { apiFetch } from '../lib/apiFetch';
 
 
 interface BackupConfig {
@@ -57,7 +58,7 @@ export function CloudBackup() {
 
   const fetchConfig = async () => {
     try {
-      const res = await fetch('http://localhost:3000/backup/config', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/backup/config', { credentials: 'include' });
       if (res.ok) {
         setConfig(await res.json());
       } else {
@@ -72,7 +73,7 @@ export function CloudBackup() {
 
   const fetchFiles = async () => {
     try {
-      const res = await fetch('http://localhost:3000/backup/files', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/backup/files', { credentials: 'include' });
       if (res.ok) {
         setFiles(await res.json());
       }
@@ -83,7 +84,7 @@ export function CloudBackup() {
 
   const handleConnect = async () => {
     try {
-      const res = await fetch('http://localhost:3000/backup/connect/google', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/backup/connect/google', { credentials: 'include' });
       const data = await res.json();
       window.location.href = data.url;
     } catch (e) {
@@ -93,7 +94,7 @@ export function CloudBackup() {
 
   const handleDisconnect = async () => {
     try {
-      await fetch('http://localhost:3000/backup/disconnect', { method: 'POST', credentials: 'include' });
+      await apiFetch('http://localhost:3000/backup/disconnect', { method: 'POST', credentials: 'include' });
       setConfig(null);
       setFiles([]);
       showAlert('Disconnected', 'Your Google Drive account has been disconnected.');
@@ -104,7 +105,7 @@ export function CloudBackup() {
 
   const handleSaveConfig = async () => {
     try {
-      const res = await fetch('http://localhost:3000/backup/config', {
+      const res = await apiFetch('http://localhost:3000/backup/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -117,47 +118,47 @@ export function CloudBackup() {
     }
   };
 
-  const handleRestore = (fileId: string) => {
+  const handleRestore = async (fileId: string) => {
+    // FR-36A: First download and show a preview with counts before user confirms
+    let backupData: any[] = [];
+    try {
+      const res = await apiFetch(`http://localhost:3000/backup/files/${fileId}/download`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to download backup for preview');
+      backupData = await res.json();
+      if (!Array.isArray(backupData)) {
+        showAlert('Error', 'Invalid backup file format');
+        return;
+      }
+    } catch (e) {
+      showAlert('Error', 'Could not read backup file for preview.');
+      return;
+    }
+
+    const secretCount = backupData.length;
+    const folderIds = new Set(backupData.map((item: any) => item.folderId).filter(Boolean));
+    const folderCount = folderIds.size;
+
     setModalState({
       isOpen: true,
-      title: 'Confirm Restore',
-      message: 'Are you sure you want to restore from this backup? This will attempt to re-create the secrets.',
+      title: 'Restore Preview',
+      message: `This backup contains:\n• ${secretCount} secret${secretCount !== 1 ? 's' : ''}\n• ${folderCount} folder reference${folderCount !== 1 ? 's' : ''}\n\nProceed? This will attempt to re-create all items in your vault.`,
       mode: 'confirm',
       onConfirm: async () => {
-        try {
-          const res = await fetch(`http://localhost:3000/backup/files/${fileId}/download`, {
-            credentials: 'include'
-          });
-          
-          if (!res.ok) throw new Error('Failed to download backup');
-          
-          const data = await res.json();
-          
-          if (!Array.isArray(data)) {
-            showAlert('Error', 'Invalid backup file format');
-            return;
+        let successCount = 0;
+        for (const item of backupData) {
+          try {
+            const postRes = await apiFetch('http://localhost:3000/secrets', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify(item)
+            });
+            if (postRes.ok) successCount++;
+          } catch (e) {
+            console.error('Failed to restore item', e);
           }
-          
-          let successCount = 0;
-          for (const item of data) {
-            try {
-              const postRes = await fetch('http://localhost:3000/secrets', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(item) // Note: In a full real flow, we might need to re-encrypt with a new itemKey or re-use it. Since backup has encryptedData, we can just push it back.
-              });
-              if (postRes.ok) successCount++;
-            } catch (e) {
-              console.error('Failed to restore item', e);
-            }
-          }
-          
-          showAlert('Restore Successful', `Successfully restored ${successCount} out of ${data.length} items from backup.`);
-        } catch (e) {
-          showAlert('Error', 'Failed to download backup');
-          console.error(e);
         }
+        showAlert('Restore Successful', `Restored ${successCount} out of ${secretCount} secrets from backup.`);
       }
     });
   };
@@ -167,7 +168,7 @@ export function CloudBackup() {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
     if (code) {
-      fetch('http://localhost:3000/backup/callback/google', {
+      apiFetch('http://localhost:3000/backup/callback/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -18,6 +18,12 @@ export class SecretsService {
         encryptedItemKey: data.encryptedItemKey,
         isPersonal: data.isPersonal || false,
         accessControlEnabled: data.accessControlEnabled || false,
+        passwordScore: data.passwordScore || 0,
+        isWeak: data.isWeak || false,
+        isReused: data.isReused || false,
+        containsUsername: data.containsUsername || false,
+        isDictionaryWord: data.isDictionaryWord || false,
+        isRecycled: data.isRecycled || false,
         ...(data.folderId ? {
           folders: {
             create: {
@@ -132,15 +138,21 @@ export class SecretsService {
         encryptedData: data.encryptedData,
         iv: data.iv,
         encryptedItemKey: data.encryptedItemKey, // If the key changed, though normally just data changes
+        passwordScore: data.passwordScore !== undefined ? data.passwordScore : undefined,
+        isWeak: data.isWeak !== undefined ? data.isWeak : undefined,
+        isReused: data.isReused !== undefined ? data.isReused : undefined,
+        containsUsername: data.containsUsername !== undefined ? data.containsUsername : undefined,
+        isDictionaryWord: data.isDictionaryWord !== undefined ? data.isDictionaryWord : undefined,
+        isRecycled: data.isRecycled !== undefined ? data.isRecycled : undefined,
       }
     });
   }
 
   async getSecretVersions(id: string, userId: string, organizationId: string) {
     const secret = await this.prisma.secret.findFirst({
-      where: { id, organizationId, ownerId: userId }
+      where: { id, organizationId }
     });
-    if (!secret) throw new ForbiddenException('Only owner can view versions');
+    if (!secret) throw new NotFoundException('Secret not found');
 
     return this.prisma.secretVersion.findMany({
       where: { secretId: id },
@@ -150,9 +162,9 @@ export class SecretsService {
 
   async restoreSecretVersion(id: string, versionId: string, userId: string, organizationId: string) {
     const secret = await this.prisma.secret.findFirst({
-      where: { id, organizationId, ownerId: userId }
+      where: { id, organizationId }
     });
-    if (!secret) throw new ForbiddenException('Only owner can restore versions');
+    if (!secret) throw new NotFoundException('Secret not found');
 
     const version = await this.prisma.secretVersion.findFirst({
       where: { id: versionId, secretId: id }

@@ -23,7 +23,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     webExtension({
-      readManifest: generateManifest
+      manifest: generateManifest
     }) as any,
   ],
   build: {

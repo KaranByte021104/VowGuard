@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSessionStore } from '../store/session';
 import { Plus, Server, Download } from 'lucide-react';
 import { Modal } from '../components/Modal';
+import { apiFetch } from '../lib/apiFetch';
 
 export function SsoDashboard() {
   const { user } = useSessionStore();
@@ -20,7 +21,7 @@ export function SsoDashboard() {
 
   const fetchApps = async () => {
     try {
-      const res = await fetch('http://localhost:3000/sso/apps', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/sso/apps', { credentials: 'include' });
       const data = await res.json();
       setApps(data);
     } catch (e) {
@@ -30,7 +31,7 @@ export function SsoDashboard() {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('http://localhost:3000/users', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/users', { credentials: 'include' });
       const data = await res.json();
       setUsers(data);
     } catch (e) {
@@ -40,7 +41,7 @@ export function SsoDashboard() {
 
   const handleCreateApp = async () => {
     try {
-      const res = await fetch('http://localhost:3000/sso/apps', {
+      const res = await apiFetch('http://localhost:3000/sso/apps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newApp),
@@ -61,7 +62,7 @@ export function SsoDashboard() {
 
   const handleDownloadMetadata = async () => {
     if (!user) return;
-    const res = await fetch(`http://localhost:3000/sso/metadata/${user.organizationId}`);
+    const res = await apiFetch(`http://localhost:3000/sso/metadata/${user.organizationId}`);
     const xml = await res.text();
     const blob = new Blob([xml], { type: 'application/xml' });
     const url = URL.createObjectURL(blob);
@@ -78,7 +79,7 @@ export function SsoDashboard() {
     const isGranted = grantedUsers.includes(userId);
     try {
       const method = isGranted ? 'DELETE' : 'POST';
-      await fetch(`http://localhost:3000/sso/apps/${createdAppId}/access/${userId}`, {
+      await apiFetch(`http://localhost:3000/sso/apps/${createdAppId}/access/${userId}`, {
         method,
         credentials: 'include'
       });
@@ -94,7 +95,7 @@ export function SsoDashboard() {
 
   const handleDisableApp = async (appId: string) => {
     if (confirm('Are you sure you want to disable this SSO application? Users will no longer be able to log in through it.')) {
-      await fetch(`http://localhost:3000/sso/apps/${appId}`, {
+      await apiFetch(`http://localhost:3000/sso/apps/${appId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isEnabled: false }),

@@ -69,4 +69,12 @@ export class UsersService {
 
     return { message: 'User removed successfully' };
   }
+
+  async enforceMfa(organizationId: string, enforce: boolean) {
+    return this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { mfaEnforced: enforce },
+      select: { id: true, name: true, mfaEnforced: true }
+    });
+  }
 }

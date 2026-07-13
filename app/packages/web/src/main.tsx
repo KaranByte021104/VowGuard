@@ -37,9 +37,12 @@ function PlaceholderPage({ title }: { title: string }) {
   );
 }
 
+import { Toaster } from 'react-hot-toast';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
+      <Toaster position="top-right" />
       <BrowserRouter>
         <Routes>
           <Route path="/signup" element={<Signup />} />

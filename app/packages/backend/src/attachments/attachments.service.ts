@@ -18,9 +18,19 @@ export class AttachmentsService implements OnModuleInit {
 
   async uploadAttachment(secretId: string, userId: string, organizationId: string, file: any, iv: string, encryptedItemKey: string) {
     const secret = await this.prisma.secret.findFirst({
-      where: { id: secretId, organizationId, ownerId: userId }
+      where: { id: secretId, organizationId }
     });
-    if (!secret) throw new ForbiddenException('Only owner can attach files');
+    if (!secret) throw new NotFoundException('Secret not found');
+
+    if (secret.ownerId !== userId) {
+      const share = await this.prisma.secretShare.findFirst({
+        where: { secretId, recipientUserId: userId }
+      });
+      // Need MODIFY or MANAGE permission to upload attachments
+      if (!share || (share.permission !== 'MODIFY' && share.permission !== 'MANAGE')) {
+        throw new ForbiddenException('Only owner or users with modify permission can attach files');
+      }
+    }
 
     if (file.size > 10 * 1024 * 1024) {
       throw new BadRequestException('File size exceeds 10 MB limit');
@@ -46,9 +56,16 @@ export class AttachmentsService implements OnModuleInit {
 
   async getAttachments(secretId: string, userId: string, organizationId: string) {
     const secret = await this.prisma.secret.findFirst({
-      where: { id: secretId, organizationId, ownerId: userId }
+      where: { id: secretId, organizationId }
     });
-    if (!secret) throw new ForbiddenException('Only owner can view attachments');
+    if (!secret) throw new NotFoundException('Secret not found');
+    
+    if (secret.ownerId !== userId) {
+      const share = await this.prisma.secretShare.findFirst({
+        where: { secretId, recipientUserId: userId }
+      });
+      if (!share) throw new ForbiddenException('Only owner or shared user can view attachments');
+    }
 
     return this.prisma.fileAttachment.findMany({
       where: { secretId },
@@ -64,7 +81,10 @@ export class AttachmentsService implements OnModuleInit {
     if (!attachment) throw new NotFoundException('Attachment not found');
 
     if (attachment.secret.ownerId !== userId || attachment.secret.organizationId !== organizationId) {
-      throw new ForbiddenException('Only owner can download attachments');
+      const share = await this.prisma.secretShare.findFirst({
+        where: { secretId: attachment.secret.id, recipientUserId: userId }
+      });
+      if (!share) throw new ForbiddenException('Only owner or shared user can download attachments');
     }
 
     if (!fs.existsSync(attachment.encryptedBlobPath)) {
@@ -87,7 +107,10 @@ export class AttachmentsService implements OnModuleInit {
     if (!attachment) throw new NotFoundException('Attachment not found');
 
     if (attachment.secret.ownerId !== userId || attachment.secret.organizationId !== organizationId) {
-      throw new ForbiddenException('Only owner can delete attachments');
+      const share = await this.prisma.secretShare.findFirst({
+        where: { secretId: attachment.secret.id, recipientUserId: userId }
+      });
+      if (!share) throw new ForbiddenException('Only owner or shared user can delete attachments');
     }
 
     if (fs.existsSync(attachment.encryptedBlobPath)) {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { deriveKey, decryptPrivateKey, importPublicKey } from '@app/shared/src/crypto';
 import { useSessionStore } from '../store/session';
+import { apiFetch } from '../lib/apiFetch';
 
 export function Login() {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ export function Login() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3000/auth/login', {
+      const response = await apiFetch('http://localhost:3000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -77,7 +78,7 @@ export function Login() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:3000/auth/login/mfa', {
+      const response = await apiFetch('http://localhost:3000/auth/login/mfa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -154,7 +155,7 @@ export function Login() {
     setError('');
     
     try {
-      const res = await fetch('http://localhost:3000/auth/reset-password/request', {
+      const res = await apiFetch('http://localhost:3000/auth/reset-password/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email })
@@ -175,7 +176,7 @@ export function Login() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:3000/auth/reset-password', {
+      const res = await apiFetch('http://localhost:3000/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

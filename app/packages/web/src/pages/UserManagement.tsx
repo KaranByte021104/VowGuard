@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { useSessionStore } from '../store/session';
+import { apiFetch } from '../lib/apiFetch';
 
 export function UserManagement() {
   const { user } = useSessionStore();
@@ -13,7 +14,7 @@ export function UserManagement() {
   const [inviteError, setInviteError] = useState('');
 
   const fetchUsers = () => {
-    fetch('http://localhost:3000/users', { credentials: 'include' })
+    apiFetch('http://localhost:3000/users', { credentials: 'include' })
       .then(res => res.json())
       .then(setUsers)
       .catch(console.error);
@@ -26,7 +27,7 @@ export function UserManagement() {
   const handleRoleChange = async (targetUserId: string, newRole: string) => {
     setError('');
     try {
-      const res = await fetch(`http://localhost:3000/users/${targetUserId}/role`, {
+      const res = await apiFetch(`http://localhost:3000/users/${targetUserId}/role`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -51,7 +52,7 @@ export function UserManagement() {
     
     setError('');
     try {
-      const res = await fetch(`http://localhost:3000/users/${targetUserId}`, {
+      const res = await apiFetch(`http://localhost:3000/users/${targetUserId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -72,7 +73,7 @@ export function UserManagement() {
     setInviteError('');
     setInviteSuccess('');
     try {
-      const res = await fetch('http://localhost:3000/invitations', {
+      const res = await apiFetch('http://localhost:3000/invitations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

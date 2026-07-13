@@ -13,7 +13,7 @@ export class ReportsController {
 
   @Get()
   getDashboardStats(@Req() req) {
-    return this.reportsService.getDashboardStats(req.user.organizationId);
+    return this.reportsService.getDashboardStats(req.user.organizationId, req.user.id);
   }
 
   @Get('user-access')
@@ -49,7 +49,7 @@ export class ReportsController {
   @Throttle({ default: { limit: 10, ttl: 3600000 } })
   @Get('export')
   async exportReport(@Req() req, @Res() res: Response, @Query('format') format: string) {
-    const data = await this.reportsService.getDashboardStats(req.user.organizationId);
+    const data = await this.reportsService.getDashboardStats(req.user.organizationId, req.user.id);
 
     if (format === 'csv') {
       const flatData = [

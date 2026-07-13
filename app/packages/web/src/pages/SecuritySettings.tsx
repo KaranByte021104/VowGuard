@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Shield, Smartphone, AlertCircle } from 'lucide-react';
 import { useSessionStore } from '../store/session';
+import { apiFetch } from '../lib/apiFetch';
 
 export function SecuritySettings() {
-  const { user } = useSessionStore();
+
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [token, setToken] = useState('');
   const [error, setError] = useState('');
@@ -14,7 +15,7 @@ export function SecuritySettings() {
     try {
       setLoading(true);
       setError('');
-      const res = await fetch('http://localhost:3000/auth/mfa/setup', {
+      const res = await apiFetch('http://localhost:3000/auth/mfa/setup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include'
@@ -34,7 +35,7 @@ export function SecuritySettings() {
     try {
       setLoading(true);
       setError('');
-      const res = await fetch('http://localhost:3000/auth/mfa/verify', {
+      const res = await apiFetch('http://localhost:3000/auth/mfa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

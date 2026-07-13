@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSessionStore } from '../store/session';
 import { generateItemKey, encryptSecretPayload, encryptItemKeyWithPublicKey } from '@app/shared/src/crypto';
 import { Upload, FileText, AlertCircle, ArrowLeft } from 'lucide-react';
+import { apiFetch } from '../lib/apiFetch';
 
 export function ImportSecrets() {
   const navigate = useNavigate();
@@ -59,7 +60,7 @@ export function ImportSecrets() {
         const { encryptedData, iv } = await encryptSecretPayload(payload, itemKey);
         const encryptedItemKey = await encryptItemKeyWithPublicKey(itemKey, publicKey);
 
-        await fetch('http://localhost:3000/secrets', {
+        await apiFetch('http://localhost:3000/secrets', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

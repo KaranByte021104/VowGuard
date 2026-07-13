@@ -194,6 +194,7 @@ enum TemplateType {
   UNIX
   WINDOWS
   LICENSE
+  DATABASE
   CUSTOM
 }
 
@@ -209,6 +210,12 @@ model Secret {
   encryptedItemKey     String       // AES ItemKey encrypted with owner's RSA Public Key (base64)
   isPersonal           Boolean      @default(false)
   accessControlEnabled Boolean      @default(false)
+  passwordScore        Int          @default(0)
+  isWeak               Boolean      @default(false)
+  isReused             Boolean      @default(false)
+  containsUsername     Boolean      @default(false)
+  isDictionaryWord     Boolean      @default(false)
+  isRecycled           Boolean      @default(false)
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
 

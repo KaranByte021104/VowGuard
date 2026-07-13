@@ -71,4 +71,43 @@ export class SsoController {
   async initiateLogin(@Req() req, @Param('appId') appId: string) {
     return this.ssoService.initiateSamlLogin(req.user.id, req.user.organizationId, appId);
   }
+
+  /**
+   * GET /sso/catalog
+   * Returns the list of SAML-compatible SaaS apps the admin can configure.
+   * TRD Section 10.9 / FR-31.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('catalog')
+  getSsoCatalog() {
+    return [
+      { id: 'okta',       name: 'Okta',          logoUrl: 'https://cdn.worldvectorlogo.com/logos/okta.svg',  description: 'Identity provider' },
+      { id: 'google',     name: 'Google Workspace', logoUrl: 'https://cdn.worldvectorlogo.com/logos/google-icon.svg', description: 'G-Suite SSO' },
+      { id: 'azure',      name: 'Azure AD',       logoUrl: 'https://cdn.worldvectorlogo.com/logos/azure-1.svg', description: 'Microsoft identity platform' },
+      { id: 'salesforce', name: 'Salesforce',     logoUrl: 'https://cdn.worldvectorlogo.com/logos/salesforce-2.svg', description: 'CRM' },
+      { id: 'github',     name: 'GitHub Enterprise', logoUrl: 'https://cdn.worldvectorlogo.com/logos/github-icon.svg', description: 'Code repository' },
+      { id: 'slack',      name: 'Slack',          logoUrl: 'https://cdn.worldvectorlogo.com/logos/slack-new-logo.svg', description: 'Team communication' },
+      { id: 'jira',       name: 'Jira / Atlassian', logoUrl: 'https://cdn.worldvectorlogo.com/logos/jira-1.svg', description: 'Project management' },
+      { id: 'aws',        name: 'AWS IAM Identity Center', logoUrl: 'https://cdn.worldvectorlogo.com/logos/amazon-icon.svg', description: 'AWS SSO' },
+      { id: 'zoom',       name: 'Zoom',           logoUrl: 'https://cdn.worldvectorlogo.com/logos/zoom-app.svg', description: 'Video conferencing' },
+      { id: 'notion',     name: 'Notion',         logoUrl: 'https://cdn.worldvectorlogo.com/logos/notion-2.svg', description: 'Workspace notes' },
+    ];
+  }
+
+  /**
+   * POST /sso/apps/:id/logout
+   * SAML Single Logout (SLO) — TRD Section 10.9 / FR-31.
+   * Returns a logout URL the client should redirect to for IdP-side logout.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('apps/:id/logout')
+  async samlLogout(@Req() req, @Param('id') id: string) {
+    const app = await this.ssoService.getSamlApp(id, req.user.organizationId);
+    // Return a SAML SLO redirect URL pointing back to the app's ACS endpoint
+    // In a full implementation this would generate a signed SAML LogoutRequest.
+    return {
+      logoutUrl: `${app.acsUrl}?SAMLRequest=logout&issuer=${encodeURIComponent(app.audienceUri)}`,
+      message: 'Redirect user to logoutUrl to complete SAML single logout'
+    };
+  }
 }

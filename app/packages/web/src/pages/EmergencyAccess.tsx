@@ -3,6 +3,7 @@ import { ShieldAlert, Trash2, Plus, Clock, User, AlertTriangle } from 'lucide-re
 import { useSessionStore } from '../store/session';
 import { Modal } from '../components/Modal';
 import { useNavigate } from 'react-router-dom';
+import { apiFetch } from '../lib/apiFetch';
 
 export function EmergencyAccess() {
   const { user, privateKey } = useSessionStore();
@@ -31,21 +32,21 @@ export function EmergencyAccess() {
   }, []);
 
   const fetchContacts = () => {
-    fetch('http://localhost:3000/emergency-access/contacts', { credentials: 'include' })
+    apiFetch('http://localhost:3000/emergency-access/contacts', { credentials: 'include' })
       .then(res => res.json())
       .then(setDesignatedContacts)
       .catch(console.error);
   };
 
   const fetchReceivedGrants = () => {
-    fetch('http://localhost:3000/emergency-access/grants', { credentials: 'include' })
+    apiFetch('http://localhost:3000/emergency-access/grants', { credentials: 'include' })
       .then(res => res.json())
       .then(setReceivedGrants)
       .catch(console.error);
   };
 
   const fetchUsers = () => {
-    fetch('http://localhost:3000/users', { credentials: 'include' })
+    apiFetch('http://localhost:3000/users', { credentials: 'include' })
       .then(res => res.json())
       .then(data => setUsers(data.filter((u: any) => u.id !== user?.id)))
       .catch(console.error);
@@ -104,7 +105,7 @@ export function EmergencyAccess() {
       const encryptedBlob = `${ivBlob}:${encKeyBlob}:${encDataBlob}`;
 
       // 7. Send to backend
-      const res = await fetch('http://localhost:3000/emergency-access/contacts', {
+      const res = await apiFetch('http://localhost:3000/emergency-access/contacts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -131,7 +132,7 @@ export function EmergencyAccess() {
   };
 
   const handleRemoveContact = async (grantId: string) => {
-    await fetch(`http://localhost:3000/emergency-access/contacts/${grantId}`, {
+    await apiFetch(`http://localhost:3000/emergency-access/contacts/${grantId}`, {
       method: 'DELETE',
       credentials: 'include'
     });
@@ -140,7 +141,7 @@ export function EmergencyAccess() {
 
   const handleTriggerGrant = async (grantId: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/emergency-access/grants/${grantId}/trigger`, {
+      const res = await apiFetch(`http://localhost:3000/emergency-access/grants/${grantId}/trigger`, {
         method: 'POST',
         credentials: 'include'
       });
@@ -156,7 +157,7 @@ export function EmergencyAccess() {
 
   const handleDenyGrant = async (grantId: string) => {
     try {
-      await fetch(`http://localhost:3000/emergency-access/grants/${grantId}/deny`, {
+      await apiFetch(`http://localhost:3000/emergency-access/grants/${grantId}/deny`, {
         method: 'POST',
         credentials: 'include'
       });

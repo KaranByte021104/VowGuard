@@ -21,11 +21,8 @@ async function main() {
   }
 
   try {
-    // Disable triggers on AuditLog to allow the CASCADE/SetNull operations
-    await prisma.$executeRaw`ALTER TABLE "AuditLog" DISABLE TRIGGER ALL;`;
-    console.log('Disabled AuditLog triggers temporarily...');
-
-    // Delete the user (this will cascade and update AuditLog userId to null)
+    // The AuditLog.userId FK has onDelete: SetNull, so the audit trail stays
+    // intact automatically when the user is deleted — no trigger bypass needed.
     await prisma.user.delete({
       where: { id: user.id }
     });
@@ -42,12 +39,12 @@ async function main() {
       });
       console.log(`Also deleted their empty organization (${user.organization.name}).`);
     }
-  } finally {
-    // ALWAYS re-enable triggers
-    await prisma.$executeRaw`ALTER TABLE "AuditLog" ENABLE TRIGGER ALL;`;
-    console.log('Re-enabled AuditLog triggers.');
+  } catch (e) {
+    console.error('Failed to delete user:', e);
+    throw e;
   }
-}
+  }
+
 
 main()
   .catch(e => {

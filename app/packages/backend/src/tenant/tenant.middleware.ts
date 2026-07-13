@@ -11,12 +11,13 @@ export class TenantMiddleware implements NestMiddleware {
     const token = req.cookies?.['access_token'] || req.headers.authorization?.split(' ')[1];
     if (token) {
       try {
-        const decoded = jwt.decode(token) as any;
+        const secret = process.env.JWT_SECRET || 'super-secret-sprint-2';
+        const decoded = jwt.verify(token, secret) as any;
         if (decoded?.organizationId) {
           organizationId = decoded.organizationId;
         }
       } catch (e) {
-        // ignore
+        // Token invalid or expired — context will be empty string, Passport will reject the request
       }
     }
 

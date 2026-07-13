@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Box, Globe, Server, Key } from 'lucide-react';
 import { useSessionStore } from '../store/session';
 import { decryptSecretPayload, decryptItemKeyWithPrivateKey } from '@app/shared/src/crypto';
+import { apiFetch } from '../lib/apiFetch';
 
 function getIconForTemplate(type: string) {
   switch (type) {
@@ -28,7 +29,7 @@ export function EmergencyVault() {
       }
       try {
         // 1. Fetch the owner's secrets
-        const res = await fetch(`http://localhost:3000/emergency-access/vault/${ownerId}`, { credentials: 'include' });
+        const res = await apiFetch(`http://localhost:3000/emergency-access/vault/${ownerId}`, { credentials: 'include' });
         if (!res.ok) {
           const errData = await res.json();
           throw new Error(errData.message || 'Failed to fetch vault');
@@ -37,7 +38,7 @@ export function EmergencyVault() {
         setSecrets(vaultSecrets);
 
         // 2. Fetch the emergency grant to get the encrypted private key
-        const grantsRes = await fetch('http://localhost:3000/emergency-access/grants', { credentials: 'include' });
+        const grantsRes = await apiFetch('http://localhost:3000/emergency-access/grants', { credentials: 'include' });
         const grants = await grantsRes.json();
         const activeGrant = grants.find((g: any) => g.ownerId === ownerId && g.status === 'ACTIVE');
         

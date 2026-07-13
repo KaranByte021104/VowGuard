@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, HttpException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
@@ -6,6 +6,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
 import { MailerService } from '@nestjs-modules/mailer';
+
+const failedLogins = new Map<string, { count: number; resetAt: number }>();
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -15,9 +19,9 @@ export class AuthService {
     private mailerService: MailerService
   ) {}
 
-  // Generates Access and Refresh Tokens
-  async generateTokens(userId: string, existingFamilyId?: string) {
-    const accessToken = this.jwtService.sign({ sub: userId }, { expiresIn: '15m' });
+  // Generates Access and Refresh Tokens with organizationId embedded in the JWT
+  async generateTokens(userId: string, organizationId: string, existingFamilyId?: string) {
+    const accessToken = this.jwtService.sign({ sub: userId, organizationId }, { expiresIn: '15m' });
     
     // Generate a secure random token for refresh
     const rawRefreshToken = crypto.randomBytes(32).toString('hex');
@@ -98,7 +102,7 @@ export class AuthService {
       user = organization.users[0];
     }
 
-    const tokens = await this.generateTokens(user.id);
+    const tokens = await this.generateTokens(user.id, user.organizationId);
 
     return {
       user: { id: user.id, email: user.email, role: user.role, encryptedPrivateKey: user.encryptedPrivateKey, publicKey: user.publicKey },
@@ -107,15 +111,38 @@ export class AuthService {
   }
 
   async login(data: any) {
+    const emailKey = data.email.toLowerCase();
+    const now = Date.now();
+    
+    if (failedLogins.has(emailKey)) {
+      const record = failedLogins.get(emailKey)!;
+      if (now > record.resetAt) {
+        failedLogins.delete(emailKey);
+      } else if (record.count >= MAX_FAILED_ATTEMPTS) {
+        throw new HttpException('Too Many Requests', 429);
+      }
+    }
+
+    const handleFailedLogin = () => {
+      const record = failedLogins.get(emailKey) || { count: 0, resetAt: now + LOCKOUT_MS };
+      record.count++;
+      record.resetAt = now + LOCKOUT_MS;
+      failedLogins.set(emailKey, record);
+      throw new UnauthorizedException('Invalid credentials');
+    };
+
     const user = await this.prisma.user.findUnique({
       where: { email: data.email },
       include: { organization: true }
     });
 
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user) return handleFailedLogin();
 
     const isValid = await argon2.verify(user.loginPassword, data.loginPassword);
-    if (!isValid) throw new UnauthorizedException('Invalid credentials');
+    if (!isValid) return handleFailedLogin();
+
+    // Successful login - clear any failed attempts
+    failedLogins.delete(emailKey);
 
     if (user.organization.mfaEnforced && user.mfaType === 'NONE') {
       throw new UnauthorizedException('MFA Setup Required by Organization');
@@ -127,7 +154,7 @@ export class AuthService {
       return { mfaRequired: true, tempToken };
     }
 
-    const tokens = await this.generateTokens(user.id);
+    const tokens = await this.generateTokens(user.id, user.organizationId);
     
     return {
       user: { id: user.id, email: user.email, role: user.role, encryptedPrivateKey: user.encryptedPrivateKey, publicKey: user.publicKey },
@@ -167,7 +194,8 @@ export class AuthService {
     });
 
     // Generate new token pair in the same family
-    return this.generateTokens(tokenRecord.userId, tokenRecord.familyId);
+    const user = await this.prisma.user.findUnique({ where: { id: tokenRecord.userId }, select: { organizationId: true } });
+    return this.generateTokens(tokenRecord.userId, user?.organizationId || '', tokenRecord.familyId);
   }
 
   async revokeAllUserSessions(userId: string) {
@@ -218,7 +246,7 @@ export class AuthService {
       const isValid = speakeasy.totp.verify({ token, secret: user.mfaSecret, encoding: 'base32' });
       if (!isValid) throw new UnauthorizedException('Invalid MFA token');
 
-      const tokens = await this.generateTokens(user.id);
+      const tokens = await this.generateTokens(user.id, user.organizationId);
       return {
         ...tokens,
         user: {

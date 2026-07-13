@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, Key, Server, Globe, Box, Folder, Download, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Key, Server, Globe, Box, Folder, Download, Edit2, Trash2, Share2 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { useSessionStore } from '../store/session';
-import { decryptSecretPayload, decryptItemKeyWithPrivateKey } from '@app/shared/src/crypto';
+import { decryptSecretPayload, decryptItemKeyWithPrivateKey, encryptItemKeyWithPublicKey, importPublicKey } from '@app/shared/src/crypto';
+import { apiFetch } from '../lib/apiFetch';
 
 function getIconForTemplate(type: string) {
   switch (type) {
@@ -21,11 +22,21 @@ export function SecretsList() {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message?: string, mode?: 'confirm' | 'prompt', promptPlaceholder?: string, onConfirm: (v?: string) => void, confirmColor?: 'red' | 'primary', confirmText?: string }>({ isOpen: false, title: '', onConfirm: () => {} });
+  const [shareFolderModal, setShareFolderModal] = useState<{ isOpen: boolean, folderId: string, folderName: string }>({ isOpen: false, folderId: '', folderName: '' });
+
+  const { data: users } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const res = await apiFetch('http://localhost:3000/users', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch users');
+      return res.json();
+    }
+  });
 
   const { data: secrets, isLoading, refetch } = useQuery({
     queryKey: ['secrets'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:3000/secrets', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/secrets', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch secrets');
       return res.json();
     }
@@ -34,7 +45,7 @@ export function SecretsList() {
   const { data: folders, refetch: refetchFolders } = useQuery({
     queryKey: ['folders'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:3000/folders', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/folders', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch folders');
       return res.json();
     }
@@ -49,7 +60,7 @@ export function SecretsList() {
       confirmText: 'Create',
       onConfirm: async (name) => {
         if (!name) return;
-        await fetch('http://localhost:3000/folders', {
+        await apiFetch('http://localhost:3000/folders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name }),
@@ -69,7 +80,7 @@ export function SecretsList() {
       confirmText: 'Rename',
       onConfirm: async (name) => {
         if (!name) return;
-        await fetch(`http://localhost:3000/folders/${folderId}`, {
+        await apiFetch(`http://localhost:3000/folders/${folderId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name }),
@@ -89,7 +100,7 @@ export function SecretsList() {
       confirmText: 'Delete',
       confirmColor: 'red',
       onConfirm: async () => {
-        await fetch(`http://localhost:3000/folders/${folderId}`, {
+        await apiFetch(`http://localhost:3000/folders/${folderId}`, {
           method: 'DELETE',
           credentials: 'include'
         });
@@ -101,7 +112,7 @@ export function SecretsList() {
 
   const handleBulkMove = async (folderId: string) => {
     if (selectedSecretIds.length === 0) return;
-    await fetch(`http://localhost:3000/folders/${folderId}/secrets`, {
+    await apiFetch(`http://localhost:3000/folders/${folderId}/secrets`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ secretIds: selectedSecretIds }),
@@ -111,12 +122,78 @@ export function SecretsList() {
     refetch(); 
   };
 
+  const submitFolderShare = async (recipientUserId: string, permission: string) => {
+    try {
+      const folder = folders?.find((f: any) => f.id === shareFolderModal.folderId);
+      if (!folder || !folder.secrets || folder.secrets.length === 0) {
+         // Even if it's empty, we could theoretically share it, but the endpoint expects encryptedItemKeys. 
+         // Let's just pass empty keys.
+      }
+      
+      const targetUser = users?.find((u: any) => u.id === recipientUserId);
+      if (!targetUser) throw new Error('User not found');
+      
+      const publicKeyBuf = Uint8Array.from(atob(targetUser.publicKey), c => c.charCodeAt(0)).buffer;
+      const cryptoPubKey = await importPublicKey(publicKeyBuf);
+      
+      const newEncryptedItemKeys: Record<string, string> = {};
+      const folderSecrets = secrets?.filter((s: any) => s.folders?.some((f: any) => f.folderId === shareFolderModal.folderId)) || [];
+      
+      for (const secret of folderSecrets) {
+        let keyToUse = secret.encryptedItemKey;
+        // Decrypt the itemKey
+        const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
+        const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey!);
+        // Re-encrypt it
+        const newEncryptedItemKey = await encryptItemKeyWithPublicKey(itemKey, cryptoPubKey);
+        newEncryptedItemKeys[secret.id] = btoa(String.fromCharCode(...new Uint8Array(newEncryptedItemKey)));
+      }
+
+      const res = await apiFetch(`http://localhost:3000/folders/${shareFolderModal.folderId}/share`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          recipientUserId,
+          permission,
+          encryptedItemKeys: newEncryptedItemKeys
+        })
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to share folder');
+      }
+      
+      alert('Folder shared successfully!');
+      setShareFolderModal({ isOpen: false, folderId: '', folderName: '' });
+      refetchFolders();
+    } catch (e: any) {
+      alert(`Error sharing folder: ${e.message}`);
+    }
+  };
+
+  const handleRevokeFolderShare = async (folderId: string, recipientId: string) => {
+    if (!confirm('Are you sure you want to revoke access for this user?')) return;
+    try {
+      const res = await apiFetch(`http://localhost:3000/folders/${folderId}/share/${recipientId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('Failed to revoke share');
+      alert('Access revoked successfully.');
+      refetchFolders();
+    } catch (e: any) {
+      alert(`Error revoking folder access: ${e.message}`);
+    }
+  };
+
   const handleExport = async () => {
     if (!secrets || !privateKey) return;
     
     try {
       // Use the gated export endpoint to enforce fine-grained controls
-      const res = await fetch('http://localhost:3000/secrets/export', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/secrets/export', { credentials: 'include' });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || 'Export restricted or failed');
@@ -220,13 +297,13 @@ export function SecretsList() {
       onConfirm: async () => {
         if (selectedFolderId) {
           // Remove from folder only
-          await fetch(`http://localhost:3000/folders/${selectedFolderId}/secrets/${id}`, {
+          await apiFetch(`http://localhost:3000/folders/${selectedFolderId}/secrets/${id}`, {
             method: 'DELETE',
             credentials: 'include'
           });
         } else {
           // Hard delete globally
-          await fetch(`http://localhost:3000/secrets/${id}`, {
+          await apiFetch(`http://localhost:3000/secrets/${id}`, {
             method: 'DELETE',
             credentials: 'include'
           });
@@ -242,7 +319,8 @@ export function SecretsList() {
   }) || [];
 
   return (
-    <div className="p-8">
+    <div className="w-full">
+      <div className="p-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Secrets Vault</h1>
         <div className="flex gap-4">
@@ -272,17 +350,24 @@ export function SecretsList() {
                 <Folder className="w-4 h-4" /> All Secrets
               </button>
             </li>
-            {folders?.map((folder: any) => (
+            {folders?.map((folder: any) => {
+              const isOwner = folder.ownerId === user?.id;
+              return (
               <li key={folder.id} className="group flex items-center justify-between">
                 <button onClick={() => setSelectedFolderId(folder.id)} className={`flex flex-1 items-center gap-2 px-2 py-1 rounded text-left truncate ${selectedFolderId === folder.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
                   <Folder className="w-4 h-4 flex-shrink-0" /> <span className="truncate">{folder.name}</span>
+                  {!isOwner && <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">Shared</span>}
                 </button>
-                <div className="hidden group-hover:flex items-center gap-1">
-                  <button onClick={() => handleRenameFolder(folder.id, folder.name)} className="p-1 text-gray-400 hover:text-blue-600"><Edit2 className="w-3 h-3" /></button>
-                  <button onClick={() => handleDeleteFolder(folder.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-3 h-3" /></button>
-                </div>
+                {isOwner && (
+                  <div className="hidden group-hover:flex items-center gap-1">
+                    <button onClick={() => setShareFolderModal({ isOpen: true, folderId: folder.id, folderName: folder.name })} className="p-1 text-gray-400 hover:text-green-600" title="Manage Access"><Share2 className="w-3 h-3" /></button>
+                    <button onClick={() => handleRenameFolder(folder.id, folder.name)} className="p-1 text-gray-400 hover:text-blue-600" title="Rename Folder"><Edit2 className="w-3 h-3" /></button>
+                    <button onClick={() => handleDeleteFolder(folder.id)} className="p-1 text-gray-400 hover:text-red-600" title="Delete Folder"><Trash2 className="w-3 h-3" /></button>
+                  </div>
+                )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
         
@@ -355,9 +440,11 @@ export function SecretsList() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <Link to={`/secrets/${secret.id}`} className="text-primary hover:text-blue-900 mr-4">View</Link>
-                    <button onClick={() => handleDelete(secret.id)} className="text-red-600 hover:text-red-900">
-                      {selectedFolderId ? 'Remove' : 'Delete'}
-                    </button>
+                    {(secret.ownerId === user?.id || secret.shares?.some((s: any) => s.recipientUserId === user?.id && s.permission === 'MODIFY')) && (
+                      <button onClick={() => handleDelete(secret.id)} className="text-red-600 hover:text-red-900">
+                        {selectedFolderId ? 'Remove' : 'Delete'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -397,6 +484,87 @@ export function SecretsList() {
         confirmColor={confirmModal.confirmColor}
         onConfirm={confirmModal.onConfirm}
       />
+      <Modal 
+        isOpen={shareFolderModal.isOpen} 
+        onClose={() => setShareFolderModal({ isOpen: false, folderId: '', folderName: '' })}
+        title={`Manage Folder Access: ${shareFolderModal.folderName}`}
+        mode="custom"
+      >
+        <div className="space-y-6">
+          {(() => {
+            const activeFolder = folders?.find((f: any) => f.id === shareFolderModal.folderId);
+            const sharedUserIds = new Set<string>();
+            activeFolder?.secrets?.forEach((fs: any) => {
+              fs.secret?.shares?.forEach((share: any) => sharedUserIds.add(share.recipientUserId));
+            });
+            const sharedUsersList = Array.from(sharedUserIds).map(id => users?.find((u: any) => u.id === id)).filter(Boolean);
+
+            return sharedUsersList.length > 0 ? (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Currently Shared With</h4>
+                <ul className="divide-y divide-gray-200 dark:divide-gray-700 border rounded-lg">
+                  {sharedUsersList.map((su: any) => (
+                    <li key={su.id} className="px-3 py-2 flex justify-between items-center text-sm text-gray-700 dark:text-gray-300">
+                      <span>{su.email}</span>
+                      <button onClick={() => handleRevokeFolderShare(shareFolderModal.folderId, su.id)} className="text-red-600 hover:text-red-800 font-medium">Revoke</button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null;
+          })()}
+          
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Share with New User</h4>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select User</label>
+                <select 
+                  id="shareUserSelect"
+                  className="w-full border-gray-300 dark:border-gray-700 rounded-md shadow-sm dark:bg-gray-800 dark:text-white p-2 border"
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select a user...</option>
+                  {users?.filter((u: any) => u.id !== user?.id).map((u: any) => (
+                    <option key={u.id} value={u.id}>{u.email}</option>
+                  ))}
+                </select>
+              </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Permission</label>
+            <select 
+              id="sharePermissionSelect"
+              className="w-full border-gray-300 dark:border-gray-700 rounded-md shadow-sm dark:bg-gray-800 dark:text-white p-2 border"
+              defaultValue="VIEW"
+            >
+              <option value="VIEW">Read Only</option>
+              <option value="MODIFY">Read & Write</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-3 mt-6">
+            <button 
+              onClick={() => setShareFolderModal({ isOpen: false, folderId: '', folderName: '' })}
+              className="px-4 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={() => {
+                const userSelect = document.getElementById('shareUserSelect') as HTMLSelectElement;
+                const permSelect = document.getElementById('sharePermissionSelect') as HTMLSelectElement;
+                if (!userSelect.value) return alert('Please select a user');
+                submitFolderShare(userSelect.value, permSelect.value);
+              }}
+              className="px-4 py-2 bg-primary text-white hover:bg-blue-700 rounded-lg"
+            >
+              Share Folder
+            </button>
+          </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
+  </div>
   );
 }

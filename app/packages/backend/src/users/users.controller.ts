@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Put, Delete, Patch, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
@@ -26,5 +26,13 @@ export class UsersController {
   @Roles('SUPER_ADMIN', 'ADMIN')
   removeUser(@Request() req, @Param('id') id: string) {
     return this.usersService.removeUser(req.user.organizationId, id);
+  }
+
+  /** Toggle org-wide MFA enforcement. SUPER_ADMIN only. */
+  @Patch('organization/enforce-mfa')
+  @UseGuards(RoleGuard)
+  @Roles('SUPER_ADMIN')
+  enforceMfa(@Request() req, @Body('enforce') enforce: boolean) {
+    return this.usersService.enforceMfa(req.user.organizationId, enforce);
   }
 }

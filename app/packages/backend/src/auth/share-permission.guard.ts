@@ -44,11 +44,11 @@ export class SharePermissionGuard implements CanActivate {
         throw new ForbiddenException('Personal secrets cannot be accessed by others');
     }
 
-    const share = await this.prisma.secretShare.findFirst({
+    const shares = await this.prisma.secretShare.findMany({
       where: { secretId, recipientUserId: user.id }
     });
 
-    if (!share) {
+    if (shares.length === 0) {
       if (requiredPermission === 'VIEW' && secret.accessControlEnabled) {
         // Let the service handle the Access Request validation for VIEW operations
         return true;
@@ -63,7 +63,11 @@ export class SharePermissionGuard implements CanActivate {
       'MANAGE': 4
     };
 
-    if (permissionWeights[share.permission] >= permissionWeights[requiredPermission]) {
+    const hasSufficientPermission = shares.some(
+      (share) => permissionWeights[share.permission] >= permissionWeights[requiredPermission]
+    );
+
+    if (hasSufficientPermission) {
       return true;
     }
 

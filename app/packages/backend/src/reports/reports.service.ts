@@ -5,26 +5,99 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
-  async getDashboardStats(organizationId: string) {
-    const cache = await this.prisma.reportCache.findUnique({
-      where: { organizationId }
+  async getDashboardStats(organizationId: string, userId: string) {
+    const totalUsers = await this.prisma.user.count({ where: { organizationId } });
+    const totalSecrets = await this.prisma.secret.count({ where: { organizationId } });
+    const totalFolders = await this.prisma.folder.count({ where: { organizationId } });
+
+    // Team stats
+    const teamSecrets = await this.prisma.secret.findMany({
+      where: { organizationId },
+      select: {
+        id: true, passwordScore: true, isWeak: true, isReused: true,
+        containsUsername: true, isDictionaryWord: true, isRecycled: true,
+        createdAt: true, updatedAt: true, templateType: true, ownerId: true, isPersonal: true
+      }
     });
+
+    // Personal stats
+    const personalSecrets = teamSecrets.filter(s => s.ownerId === userId);
+
+    const calcStats = (secrets: any[]) => {
+      let weak = 0, reused = 0, containsUsername = 0, old = 0, dictionary = 0, recycled = 0;
+      let scoreSum = 0;
+      const categories: Record<string, number> = {};
+
+      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+
+      for (const s of secrets) {
+        if (s.isWeak) weak++;
+        if (s.isReused) reused++;
+        if (s.containsUsername) containsUsername++;
+        if (s.isDictionaryWord) dictionary++;
+        if (s.isRecycled) recycled++;
+        if (s.updatedAt < ninetyDaysAgo) old++;
+        scoreSum += s.passwordScore;
+        categories[s.templateType] = (categories[s.templateType] || 0) + 1;
+      }
+
+      const total = secrets.length || 1;
+      // Score max is 4 per secret, normalize to 100%
+      const avgScore = Math.round(((scoreSum / total) / 4) * 100);
+
+      return {
+        total: secrets.length,
+        assessment: { score: avgScore, weak, reused, containsUsername, old, dictionary, recycled },
+        categories
+      };
+    };
+
+    const team = calcStats(teamSecrets);
+    const personal = calcStats(personalSecrets);
+
+    // Calculate Owned, Shared by me, Shared with me, Unshared
+    const owned = personalSecrets.length;
     
-    if (cache) {
-      return JSON.parse(cache.data);
-    }
-    
-    return this.generateReportData(organizationId);
+    // Actually, "shared with me" requires checking shares
+    const sharedWithMe = await this.prisma.secretShare.count({
+      where: { recipientUserId: userId }
+    });
+
+    const sharedByMe = await this.prisma.secretShare.findMany({
+      where: { secret: { ownerId: userId } },
+      select: { secretId: true },
+      distinct: ['secretId']
+    }).then(res => res.length);
+
+    const unshared = owned - sharedByMe;
+    const personalOnly = personalSecrets.filter(s => s.isPersonal).length;
+
+    const totalShares = await this.prisma.secretShare.count({ where: { secret: { organizationId } } });
+    const auditLogsCount = await this.prisma.auditLog.count({ where: { organizationId } });
+
+    const data = {
+      userAccess: { total: totalUsers },
+      passwordAccess: { total: totalSecrets },
+      folders: { total: totalFolders },
+      sharing: { total: totalShares },
+      auditEvents: auditLogsCount,
+      team,
+      personal,
+      overview: {
+        owned, sharedByMe, sharedWithMe, unshared, personal: personalOnly
+      }
+    };
+
+    return data;
   }
 
   async generateReportData(organizationId: string) {
-    // Basic aggregation for the 6 report types
+    // Basic aggregation for cron job
     const totalUsers = await this.prisma.user.count({ where: { organizationId } });
     const totalSecrets = await this.prisma.secret.count({ where: { organizationId } });
     const totalShares = await this.prisma.secretShare.count({ where: { secret: { organizationId } } });
     const auditLogsCount = await this.prisma.auditLog.count({ where: { organizationId } });
 
-    // Dummy data for PDF/CSV logic since full aggregation takes time
     const data = {
       userAccess: { total: totalUsers },
       passwordAccess: { total: totalSecrets },
@@ -53,9 +126,33 @@ export class ReportsService {
   }
 
   async getPasswordAssessmentReport(organizationId: string) {
-    // Would analyze password strength/reuse based on breached DBs.
-    // For this stub we return placeholder.
-    return { data: { weakCount: 0, reusedCount: 0, healthyCount: await this.prisma.secret.count({ where: { organizationId } }) } };
+    const secrets = await this.prisma.secret.findMany({
+      where: { organizationId },
+      select: { id: true, encryptedData: true, name: true }
+    });
+
+    // Reuse detection: secrets with identical ciphertext are duplicates
+    const dataCounts = new Map<string, number>();
+    for (const s of secrets) {
+      if (s.encryptedData) {
+        dataCounts.set(s.encryptedData, (dataCounts.get(s.encryptedData) || 0) + 1);
+      }
+    }
+    const reusedIds = new Set(
+      secrets.filter(s => s.encryptedData && (dataCounts.get(s.encryptedData) || 0) > 1).map(s => s.id)
+    );
+
+    // Weak proxy: title suggests a trivially simple credential (e.g., "test", "admin", "pass")
+    const weakKeywords = ['test', 'admin', 'pass', 'password', '123', 'temp', 'demo'];
+    const weakIds = new Set(
+      secrets.filter(s => weakKeywords.some(k => s.name?.toLowerCase().includes(k))).map(s => s.id)
+    );
+
+    const reusedCount = reusedIds.size;
+    const weakCount = [...weakIds].filter(id => !reusedIds.has(id)).length;
+    const healthyCount = secrets.length - reusedCount - weakCount;
+
+    return { data: { weakCount, reusedCount, healthyCount: Math.max(0, healthyCount), total: secrets.length } };
   }
 
   async getFolderAccessReport(organizationId: string) {

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { deriveKey, generateKeyPair, encryptPrivateKey, exportPublicKey } from '@app/shared/src/crypto';
 import { useSessionStore } from '../store/session';
+import { apiFetch } from '../lib/apiFetch';
 
 export function Signup() {
   const navigate = useNavigate();
@@ -32,7 +33,7 @@ export function Signup() {
   useEffect(() => {
     if (inviteToken) {
       // Validate invite
-      fetch(`http://localhost:3000/invitations/${inviteToken}`)
+      apiFetch(`http://localhost:3000/invitations/${inviteToken}`)
         .then(res => {
           if (!res.ok) throw new Error('Invalid or expired invite link.');
           return res.json();
@@ -113,7 +114,7 @@ export function Signup() {
         payload.type = formData.type;
       }
 
-      const response = await fetch('http://localhost:3000/auth/signup', {
+      const response = await apiFetch('http://localhost:3000/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

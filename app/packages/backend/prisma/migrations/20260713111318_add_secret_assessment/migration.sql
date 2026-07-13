@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "Secret" ADD COLUMN     "containsUsername" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "isDictionaryWord" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "isRecycled" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "isReused" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "isWeak" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "passwordScore" INTEGER NOT NULL DEFAULT 0;

@@ -45,4 +45,13 @@ export class FoldersController {
   ) {
     return this.foldersService.shareFolder(id, body.recipientUserId, body.permission, body.encryptedItemKeys, req.user.organizationId, req.user.id);
   }
+
+  @Delete(':id/share/:recipientId')
+  revokeFolderShare(
+    @Request() req,
+    @Param('id') id: string,
+    @Param('recipientId') recipientId: string
+  ) {
+    return this.foldersService.revokeFolderShare(id, recipientId, req.user.organizationId, req.user.id);
+  }
 }

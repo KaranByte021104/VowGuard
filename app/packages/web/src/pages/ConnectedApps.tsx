@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Server, ArrowRight } from 'lucide-react';
+import { apiFetch } from '../lib/apiFetch';
 
 export function ConnectedApps() {
   const [apps, setApps] = useState<any[]>([]);
@@ -10,7 +11,7 @@ export function ConnectedApps() {
 
   const fetchMyApps = async () => {
     try {
-      const res = await fetch('http://localhost:3000/sso/my-apps', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/sso/my-apps', { credentials: 'include' });
       const data = await res.json();
       setApps(data);
     } catch (e) {
@@ -20,7 +21,7 @@ export function ConnectedApps() {
 
   const handleAppLogin = async (appId: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/sso/login/${appId}`, {
+      const res = await apiFetch(`http://localhost:3000/sso/login/${appId}`, {
         method: 'POST',
         credentials: 'include'
       });

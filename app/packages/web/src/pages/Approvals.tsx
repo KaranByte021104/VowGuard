@@ -4,6 +4,7 @@ import { ShieldAlert, CheckCircle, XCircle } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { useSessionStore } from '../store/session';
 import { decryptItemKeyWithPrivateKey, encryptItemKeyWithPublicKey, importPublicKey } from '@app/shared/src/crypto';
+import { apiFetch } from '../lib/apiFetch';
 
 export function Approvals() {
   const { privateKey } = useSessionStore();
@@ -15,7 +16,7 @@ export function Approvals() {
   const { data: requests, refetch, isLoading } = useQuery({
     queryKey: ['pendingRequests'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:3000/requests/pending', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/requests/pending', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load pending requests');
       return res.json();
     }
@@ -50,7 +51,7 @@ export function Approvals() {
     }
 
     try {
-      const res = await fetch(`http://localhost:3000/requests/${req.id}/${action}`, {
+      const res = await apiFetch(`http://localhost:3000/requests/${req.id}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

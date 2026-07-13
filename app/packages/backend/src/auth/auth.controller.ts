@@ -1,10 +1,11 @@
 import { Controller, Post, Body, Res, Req, UnauthorizedException, Get, UseGuards, Request } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { SkipThrottle, Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { Response, Request as ExpressRequest } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
+@UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -35,7 +36,7 @@ export class AuthController {
     return { user: result.user };
   }
 
-  @Throttle({ default: { limit: 5, ttl: 900000 } })
+  @SkipThrottle()
   @Post('login')
   async login(@Body() body: any, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(body);
@@ -119,6 +120,8 @@ export class AuthController {
     return this.authService.verifyTotpSetup(req.user.id, body.token);
   }
 
+  // TRD §12: 5 attempts per 10 minutes for MFA verification
+  @Throttle({ default: { limit: 5, ttl: 600000 } })
   @Post('login/mfa')
   async loginMfa(@Body() body: { tempToken: string, token: string }, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.loginWithMfa(body.tempToken, body.token);

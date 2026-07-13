@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Modal } from '../components/Modal';
 import { Users, UserPlus, Trash, Plus, X } from 'lucide-react';
+import { apiFetch } from '../lib/apiFetch';
 
 export function Sharing() {
   const [modalState, setModalState] = useState<{ isOpen: boolean; mode: 'create_group' | 'add_member' | 'confirm'; data?: any }>({ isOpen: false, mode: 'create_group' });
@@ -10,7 +11,7 @@ export function Sharing() {
   const { data: groups, refetch } = useQuery({
     queryKey: ['groups'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:3000/groups', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/groups', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch groups');
       return res.json();
     }
@@ -19,7 +20,7 @@ export function Sharing() {
   const { data: orgUsers } = useQuery({
     queryKey: ['orgUsers'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:3000/users', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/users', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch users');
       return res.json();
     }
@@ -28,7 +29,7 @@ export function Sharing() {
   const handleCreateGroup = async (name?: string) => {
     if (!name) return;
     try {
-      const res = await fetch('http://localhost:3000/groups', {
+      const res = await apiFetch('http://localhost:3000/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -48,7 +49,7 @@ export function Sharing() {
 
   const handleDeleteGroup = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/groups/${id}`, {
+      const res = await apiFetch(`http://localhost:3000/groups/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -63,7 +64,7 @@ export function Sharing() {
   const handleAddMember = async () => {
     if (!selectedUserId || !modalState.data?.groupId) return;
     try {
-      const res = await fetch(`http://localhost:3000/groups/${modalState.data.groupId}/members`, {
+      const res = await apiFetch(`http://localhost:3000/groups/${modalState.data.groupId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -84,7 +85,7 @@ export function Sharing() {
 
   const handleRemoveMember = async (groupId: string, userId: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/groups/${groupId}/members/${userId}`, {
+      const res = await apiFetch(`http://localhost:3000/groups/${groupId}/members/${userId}`, {
         method: 'DELETE',
         credentials: 'include'
       });

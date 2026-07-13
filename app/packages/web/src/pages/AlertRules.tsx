@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bell, Plus, Clock, Zap, Settings } from 'lucide-react';
 import { Modal } from '../components/Modal';
+import { apiFetch } from '../lib/apiFetch';
 
 export function AlertRules() {
   const { data: rules, refetch, isLoading } = useQuery({
     queryKey: ['alertRules'],
     queryFn: async () => {
-      const res = await fetch('http://localhost:3000/alerts/rules', { credentials: 'include' });
+      const res = await apiFetch('http://localhost:3000/alerts/rules', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch rules');
       return res.json();
     }
@@ -35,7 +36,7 @@ export function AlertRules() {
         recipientType: formData.get('recipientType'),
       };
       
-      const res = await fetch('http://localhost:3000/alerts/rules', {
+      const res = await apiFetch('http://localhost:3000/alerts/rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

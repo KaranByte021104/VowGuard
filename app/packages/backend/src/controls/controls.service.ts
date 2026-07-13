@@ -36,4 +36,29 @@ export class ControlsService {
       create: { organizationId, action, isEnabled }
     });
   }
+
+  async addExemption(organizationId: string, action: string, userId: string) {
+    // Ensure the control record exists first
+    const control = await this.prisma.fineGrainedControl.upsert({
+      where: { organizationId_action: { organizationId, action } },
+      update: {},
+      create: { organizationId, action, isEnabled: true }
+    });
+    return this.prisma.fineGrainedControlExemption.upsert({
+      where: { controlId_userId: { controlId: control.id, userId } },
+      update: {},
+      create: { controlId: control.id, userId }
+    });
+  }
+
+  async removeExemption(organizationId: string, action: string, userId: string) {
+    const control = await this.prisma.fineGrainedControl.findUnique({
+      where: { organizationId_action: { organizationId, action } }
+    });
+    if (!control) return { success: false };
+    await this.prisma.fineGrainedControlExemption.deleteMany({
+      where: { controlId: control.id, userId }
+    });
+    return { success: true };
+  }
 }
