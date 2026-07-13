@@ -224,7 +224,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.mfaSecret) throw new BadRequestException('MFA setup not initiated');
 
-    const isValid = speakeasy.totp.verify({ token, secret: user.mfaSecret, encoding: 'base32' });
+      const isValid = speakeasy.totp.verify({ token, secret: user.mfaSecret, encoding: 'base32', window: 1 });
     if (!isValid) throw new UnauthorizedException('Invalid verification code');
 
     await this.prisma.user.update({
@@ -243,7 +243,7 @@ export class AuthService {
       const user = await this.prisma.user.findUnique({ where: { id: decoded.sub } });
       if (!user || !user.mfaSecret) throw new Error();
 
-      const isValid = speakeasy.totp.verify({ token, secret: user.mfaSecret, encoding: 'base32' });
+        const isValid = speakeasy.totp.verify({ token, secret: user.mfaSecret, encoding: 'base32', window: 1 });
       if (!isValid) throw new UnauthorizedException('Invalid MFA token');
 
       const tokens = await this.generateTokens(user.id, user.organizationId);

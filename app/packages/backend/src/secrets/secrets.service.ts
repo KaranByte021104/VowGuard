@@ -10,7 +10,7 @@ export class SecretsService {
       data: {
         ownerId: userId,
         organizationId,
-        templateType: data.templateType,
+        templateType: data.templateType || 'LOGIN',
         name: data.name,
         domain: data.domain,
         encryptedData: data.encryptedData,

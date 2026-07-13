@@ -13,7 +13,8 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content.ts"]
+      "js": ["src/content.ts"],
+      "all_frames": true
     }
   ],
   "permissions": [

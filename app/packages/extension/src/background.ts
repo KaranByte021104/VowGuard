@@ -46,10 +46,15 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           let n = d.toLowerCase();
           if (n.startsWith('http://')) n = n.substring(7);
           if (n.startsWith('https://')) n = n.substring(8);
+          if (n.startsWith('www.')) n = n.substring(4);
           if (n.endsWith('/')) n = n.slice(0, -1);
           return n;
         };
-        const matchingSecrets = secrets.filter((s: any) => normalize(s.domain) === normalize(origin));
+        const matchingSecrets = secrets.filter((s: any) => {
+          const sDom = normalize(s.domain);
+          const oDom = normalize(origin);
+          return oDom === sDom || oDom.endsWith('.' + sDom);
+        });
         
         if (matchingSecrets.length > 0) {
           // Decrypt in memory and return
@@ -154,9 +159,15 @@ async function handleSaveCredential(origin: string, username: string, password: 
 
   const encryptedItemKey = await encryptItemKeyWithPublicKey(itemKey, sessionKeys!.publicKey);
 
+  const csrfRes = await fetch('http://localhost:3000/csrf-token', { credentials: 'include' });
+  const csrfData = await csrfRes.json();
+
   const response = await fetch('http://localhost:3000/secrets', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'x-csrf-token': csrfData.csrfToken
+    },
     credentials: 'include',
     body: JSON.stringify({
       name: `Saved from ${origin}`,

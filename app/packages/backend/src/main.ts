@@ -13,7 +13,13 @@ async function bootstrap() {
   app.use(cookieParser());
 
   app.enableCors({
-    origin: process.env.WEB_URL || 'http://localhost:5173',
+    origin: (origin, callback) => {
+      if (!origin || origin === (process.env.WEB_URL || 'http://localhost:5173') || origin.startsWith('chrome-extension://')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   });
   
@@ -24,8 +30,8 @@ async function bootstrap() {
     cookieName: 'x-csrf-token',
     cookieOptions: {
       httpOnly: true,
-      sameSite: 'strict',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
+      secure: true,
     },
     getTokenFromRequest: (req) => req.headers['x-csrf-token'],
     getSessionIdentifier: (req) => req.cookies?.['access_token'] || 'anonymous',
