@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { deriveKey, generateKeyPair, encryptPrivateKey, exportPublicKey } from '@app/shared/src/crypto';
 import { useSessionStore } from '../store/session';
 
 export function Signup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite');
+  
   const [step, setStep] = useState(1);
+  const [isInviteFlow, setIsInviteFlow] = useState(false);
+  const [inviteData, setInviteData] = useState<any>(null);
+  const [inviteError, setInviteError] = useState('');
+
   const [formData, setFormData] = useState({
     email: '',
     loginPassword: '',
@@ -21,6 +28,25 @@ export function Signup() {
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   const { setKeys, setUser } = useSessionStore();
+
+  useEffect(() => {
+    if (inviteToken) {
+      // Validate invite
+      fetch(`http://localhost:3000/invitations/${inviteToken}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Invalid or expired invite link.');
+          return res.json();
+        })
+        .then(data => {
+          setIsInviteFlow(true);
+          setInviteData(data);
+          setFormData(prev => ({ ...prev, email: data.email }));
+        })
+        .catch(e => {
+          setInviteError(e.message);
+        });
+    }
+  }, [inviteToken]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -73,18 +99,25 @@ export function Signup() {
       const publicKeyBase64 = arrayBufferToBase64(publicKeyBuf);
 
       // Send to server
+      const payload: any = {
+        email: formData.email,
+        loginPassword: formData.loginPassword,
+        publicKey: publicKeyBase64,
+        encryptedPrivateKey: combinedEncryptedKey,
+      };
+
+      if (isInviteFlow) {
+        payload.inviteToken = inviteToken;
+      } else {
+        payload.organizationName = formData.organizationName;
+        payload.type = formData.type;
+      }
+
       const response = await fetch('http://localhost:3000/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          email: formData.email,
-          loginPassword: formData.loginPassword,
-          organizationName: formData.organizationName,
-          type: formData.type,
-          publicKey: publicKeyBase64,
-          encryptedPrivateKey: combinedEncryptedKey,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -107,13 +140,27 @@ export function Signup() {
     }
   };
 
+  if (inviteToken && inviteError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Invalid Invite</h2>
+          <p className="text-gray-600">{inviteError}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Shield className="mx-auto h-12 w-12 text-primary" />
         <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-          {step === 1 ? 'Create an Organization' : 'Master Password'}
+          {step === 1 ? (isInviteFlow ? `Join ${inviteData?.organizationName}` : 'Create an Organization') : 'Master Password'}
         </h2>
+        {isInviteFlow && step === 1 && (
+          <p className="mt-2 text-sm text-gray-600">You have been invited to join this vault.</p>
+        )}
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -123,13 +170,15 @@ export function Signup() {
             
             {step === 1 ? (
               <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Organization Name</label>
-                  <input name="organizationName" value={formData.organizationName} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
-                </div>
+                {!isInviteFlow && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Organization Name</label>
+                    <input name="organizationName" value={formData.organizationName} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Email Address</label>
-                  <input name="email" value={formData.email} type="email" required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
+                  <input name="email" value={formData.email} type="email" required disabled={isInviteFlow} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${isInviteFlow ? 'bg-gray-100 text-gray-500' : ''}`} onChange={handleChange} />
                 </div>
                 <div className="relative">
                   <label className="block text-sm font-medium text-gray-700">Login Password</label>
@@ -163,7 +212,7 @@ export function Signup() {
                   </div>
                 </div>
                 <button type="submit" disabled={loading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700">
-                  {loading ? 'Creating...' : 'Create Vault'}
+                  {loading ? 'Creating...' : (isInviteFlow ? 'Join Vault' : 'Create Vault')}
                 </button>
               </>
             )}

@@ -37,27 +37,63 @@ export class AuthService {
     // Hash the login password
     const loginPasswordHash = await argon2.hash(data.loginPassword);
 
-    // Create the Organization and User
-    const organization = await this.prisma.organization.create({
-      data: {
-        name: data.organizationName,
-        type: data.type || 'TEAMS',
-        users: {
-          create: {
-            email: data.email,
-            loginPassword: loginPasswordHash,
-            publicKey: data.publicKey,
-            encryptedPrivateKey: data.encryptedPrivateKey,
-            role: 'SUPER_ADMIN',
-          }
-        }
-      },
-      include: {
-        users: true
-      }
-    });
+    let organization;
+    let user;
 
-    const user = organization.users[0];
+    if (data.inviteToken) {
+      // Find the pending invite
+      const invite = await this.prisma.invitation.findUnique({
+        where: { tokenHash: data.inviteToken }
+      });
+      if (!invite || invite.status !== 'PENDING' || invite.expiresAt < new Date()) {
+        throw new BadRequestException('Invalid or expired invitation');
+      }
+
+      // Check if email matches invite
+      if (invite.email.toLowerCase() !== data.email.toLowerCase()) {
+        throw new BadRequestException('Email does not match the invitation');
+      }
+
+      // Create the user in the existing organization
+      user = await this.prisma.user.create({
+        data: {
+          email: data.email,
+          loginPassword: loginPasswordHash,
+          publicKey: data.publicKey,
+          encryptedPrivateKey: data.encryptedPrivateKey,
+          role: invite.role,
+          organizationId: invite.organizationId
+        }
+      });
+
+      // Mark invite as ACCEPTED
+      await this.prisma.invitation.update({
+        where: { id: invite.id },
+        data: { status: 'ACCEPTED' }
+      });
+    } else {
+      // Create the Organization and User (Original flow)
+      organization = await this.prisma.organization.create({
+        data: {
+          name: data.organizationName,
+          type: data.type || 'TEAMS',
+          users: {
+            create: {
+              email: data.email,
+              loginPassword: loginPasswordHash,
+              publicKey: data.publicKey,
+              encryptedPrivateKey: data.encryptedPrivateKey,
+              role: 'SUPER_ADMIN',
+            }
+          }
+        },
+        include: {
+          users: true
+        }
+      });
+      user = organization.users[0];
+    }
+
     const tokens = await this.generateTokens(user.id);
 
     return {

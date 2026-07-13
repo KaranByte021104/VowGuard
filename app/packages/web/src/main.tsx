@@ -19,6 +19,7 @@ import { CloudBackup } from './pages/CloudBackup';
 import { Dashboard } from './pages/Dashboard';
 import { AdminControls } from './pages/AdminControls';
 import { AlertRules } from './pages/AlertRules';
+import { UserManagement } from './pages/UserManagement';
 import './index.css';
 import App from './App.tsx';
 
@@ -59,6 +60,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="admin" element={<PlaceholderPage title="Administration" />} />
             <Route path="admin/controls" element={<AdminControls />} />
             <Route path="admin/sso" element={<SsoDashboard />} />
+            <Route path="admin/users" element={<UserManagement />} />
             <Route path="alerts" element={<AlertRules />} />
           </Route>
         </Routes>

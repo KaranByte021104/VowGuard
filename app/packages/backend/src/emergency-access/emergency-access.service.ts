@@ -2,12 +2,14 @@ import { Injectable, NotFoundException, ForbiddenException, HttpException } from
 import { PrismaService } from '../prisma/prisma.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class EmergencyAccessService {
   constructor(
     private prisma: PrismaService,
     @InjectQueue('emergency-access') private emergencyQueue: Queue,
+    private mailerService: MailerService,
   ) {}
 
   async designateContact(ownerId: string, contactId: string, sessionValidityHours: number, waitingPeriodHours: number, encryptedPrivateKey: string) {
@@ -81,6 +83,20 @@ export class EmergencyAccessService {
     );
 
     console.log(`[Emergency Access] Alert sent to Owner ${grant.ownerId}: ${contactId} triggered emergency access.`);
+
+    try {
+      const owner = await this.prisma.user.findUnique({ where: { id: grant.ownerId } });
+      const contact = await this.prisma.user.findUnique({ where: { id: contactId } });
+      if (owner && contact) {
+        await this.mailerService.sendMail({
+          to: owner.email,
+          subject: 'Emergency Access Triggered',
+          text: `Your designated emergency contact (${contact.email}) has requested access to your vault.\nThe waiting period of ${grant.waitingPeriodHours} hours has started. If you do not deny this request, they will receive access at ${waitingPeriodUntil.toISOString()}.`,
+        });
+      }
+    } catch (e) {
+      console.error('Failed to send emergency access email', e);
+    }
     
     return updated;
   }

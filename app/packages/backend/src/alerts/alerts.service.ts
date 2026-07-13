@@ -1,11 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class AlertsService {
   private readonly logger = new Logger(AlertsService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mailerService: MailerService,
+  ) {}
 
   async processAuditLog(auditLog: any) {
     try {
@@ -33,9 +37,7 @@ export class AlertsService {
     }
   }
 
-  private sendAlert(rule: any, auditLog: any) {
-    // In a real implementation, this would use Nodemailer and Socket.io
-    // Since we are mocking email for sprint 10 demo as requested:
+  private async sendAlert(rule: any, auditLog: any) {
     let recipients: string[] = [];
     if (rule.recipientType === 'ALL_ADMINS') {
       recipients.push('all-admins@example.com');
@@ -43,6 +45,19 @@ export class AlertsService {
       recipients = rule.specificUsers.map(su => su.user.email);
     }
 
+    if (recipients.length === 0) return;
+
     this.logger.log(`[ALERT TRIGGERED] Rule: ${rule.name} | Event: ${auditLog.action} | To: ${recipients.join(', ')}`);
+
+    try {
+      await this.mailerService.sendMail({
+        to: recipients,
+        subject: `Security Alert: ${rule.name}`,
+        text: `An event matching the rule "${rule.name}" has occurred.\nAction: ${auditLog.action}\nTime: ${new Date().toISOString()}`,
+      });
+      this.logger.log(`Successfully sent email alert to: ${recipients.join(', ')}`);
+    } catch (e) {
+      this.logger.error('Failed to send email alert', e);
+    }
   }
 }

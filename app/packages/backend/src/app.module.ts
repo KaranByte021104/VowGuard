@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -41,6 +42,18 @@ import { ControlsModule } from './controls/controls.module';
       ttl: 60000,
       limit: 100, // Global limit: 100 requests per minute
     }]),
+    MailerModule.forRoot({
+      transport: {
+        service: process.env.SMTP_SERVICE || 'gmail',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      },
+      defaults: {
+        from: `"${process.env.EMAIL_FROM || 'VowGuard'}" <${process.env.SMTP_USER}>`,
+      },
+    }),
     AuthModule,
     UsersModule,
     SecretsModule,

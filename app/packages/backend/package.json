@@ -21,6 +21,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs-modules/mailer": "^2.3.7",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
@@ -45,6 +46,7 @@
     "ioredis": "^5.11.1",
     "json2csv": "^6.0.0-alpha.2",
     "node-forge": "^1.4.0",
+    "nodemailer": "^9.0.3",
     "otplib": "^13.4.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -70,6 +72,7 @@
     "@types/jest": "^30.0.0",
     "@types/json2csv": "^5.0.7",
     "@types/node": "^24.0.0",
+    "@types/nodemailer": "^8.0.1",
     "@types/passport-jwt": "^4.0.1",
     "@types/pdfkit": "^0.17.6",
     "@types/qrcode": "^1.5.6",
