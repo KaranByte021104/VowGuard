@@ -49,12 +49,16 @@ export class AccessControlService {
   async createRequest(secretId: string, userId: string, organizationId: string, data: any) {
     const secret = await this.prisma.secret.findFirst({
       where: { id: secretId, organizationId },
-      include: { accessControlConfig: { include: { excludedUsers: true } } }
+      include: { accessControlConfig: { include: { excludedUsers: true, approvers: true } } }
     });
 
     if (!secret) throw new NotFoundException('Secret not found');
     if (!secret.accessControlEnabled || !secret.accessControlConfig) {
       throw new BadRequestException('Access Control is not enabled for this secret');
+    }
+
+    if (secret.accessControlConfig.approvers.length < secret.accessControlConfig.minimumApproverCount) {
+      throw new BadRequestException(`Cannot request access: This secret requires ${secret.accessControlConfig.minimumApproverCount} approver(s), but only ${secret.accessControlConfig.approvers.length} are currently assigned.`);
     }
 
     const isExcluded = secret.accessControlConfig.excludedUsers.some(eu => eu.userId === userId);
@@ -204,5 +208,29 @@ export class AccessControlService {
     });
 
     return { message: 'Request denied' };
+  }
+
+  async revokeRequest(requestId: string, userId: string, organizationId: string) {
+    const request = await this.prisma.accessRequest.findFirst({
+      where: { id: requestId },
+      include: { secret: true }
+    });
+
+    if (!request) throw new NotFoundException('Request not found');
+
+    if (request.secret.organizationId !== organizationId) {
+      throw new ForbiddenException('Unauthorized');
+    }
+
+    if (request.secret.ownerId !== userId) {
+      throw new ForbiddenException('Only the owner can revoke access requests');
+    }
+
+    await this.prisma.accessRequest.update({
+      where: { id: requestId },
+      data: { status: 'VOIDED' }
+    });
+
+    return { message: 'Request revoked successfully' };
   }
 }

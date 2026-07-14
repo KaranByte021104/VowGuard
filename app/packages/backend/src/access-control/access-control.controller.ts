@@ -57,4 +57,12 @@ export class AccessControlController {
   ) {
     return this.accessControlService.denyRequest(requestId, req.user.id, req.user.organizationId);
   }
+
+  @Post('requests/:requestId/revoke')
+  async revokeRequest(
+    @Req() req: any,
+    @Param('requestId') requestId: string
+  ) {
+    return this.accessControlService.revokeRequest(requestId, req.user.id, req.user.organizationId);
+  }
 }

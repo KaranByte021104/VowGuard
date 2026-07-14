@@ -42,7 +42,7 @@ async function main() {
     data: {
       email: 'superadmin@zylkercorp.com',
       loginPassword: await hashPassword(demoMasterPassword),
-      publicKey: 'mock-public-key',
+      publicKey: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwCxmhdX9d6PJ/Hm6LfvI1bbNUt2OzsxSLBl38pLxTgCO+ebETPvH0YAA/RPn6Tw2Q0vwNT5t+m1O+aDA7VZMuYWO07Yd8EB3Suxweljtp7QdicS90IHVYuMGURSXvJxdOf/vq6wVDQM84/QxUNasX3NvvDMTHoGDe6fE6oj7PomiRy6VeKnfH8JFXDh8XSaVJ2L3cya2r+6lyftiPRX455uP67qv4/mlu1nOA6BRaSOpMIR3N46htoFwLpaBqOh9t8GO0/mCNmxBT3afu+7PjWJBqXzduAz1e7qC7wFr1rmEjhuwTFNxOyvjOSlDBHWT9EyPKCC88WH9BAI7kZ40UwIDAQAB',
       encryptedPrivateKey: 'mock-encrypted-private-key',
       role: 'SUPER_ADMIN',
       status: 'ACTIVE',
@@ -54,7 +54,7 @@ async function main() {
     data: {
       email: 'admin@zylkercorp.com',
       loginPassword: await hashPassword(demoMasterPassword),
-      publicKey: 'mock-public-key',
+      publicKey: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwCxmhdX9d6PJ/Hm6LfvI1bbNUt2OzsxSLBl38pLxTgCO+ebETPvH0YAA/RPn6Tw2Q0vwNT5t+m1O+aDA7VZMuYWO07Yd8EB3Suxweljtp7QdicS90IHVYuMGURSXvJxdOf/vq6wVDQM84/QxUNasX3NvvDMTHoGDe6fE6oj7PomiRy6VeKnfH8JFXDh8XSaVJ2L3cya2r+6lyftiPRX455uP67qv4/mlu1nOA6BRaSOpMIR3N46htoFwLpaBqOh9t8GO0/mCNmxBT3afu+7PjWJBqXzduAz1e7qC7wFr1rmEjhuwTFNxOyvjOSlDBHWT9EyPKCC88WH9BAI7kZ40UwIDAQAB',
       encryptedPrivateKey: 'mock-encrypted-private-key',
       role: 'ADMIN',
       status: 'ACTIVE',
@@ -66,7 +66,7 @@ async function main() {
     data: {
       email: 'engineer1@zylkercorp.com',
       loginPassword: await hashPassword(demoMasterPassword),
-      publicKey: 'mock-public-key',
+      publicKey: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwCxmhdX9d6PJ/Hm6LfvI1bbNUt2OzsxSLBl38pLxTgCO+ebETPvH0YAA/RPn6Tw2Q0vwNT5t+m1O+aDA7VZMuYWO07Yd8EB3Suxweljtp7QdicS90IHVYuMGURSXvJxdOf/vq6wVDQM84/QxUNasX3NvvDMTHoGDe6fE6oj7PomiRy6VeKnfH8JFXDh8XSaVJ2L3cya2r+6lyftiPRX455uP67qv4/mlu1nOA6BRaSOpMIR3N46htoFwLpaBqOh9t8GO0/mCNmxBT3afu+7PjWJBqXzduAz1e7qC7wFr1rmEjhuwTFNxOyvjOSlDBHWT9EyPKCC88WH9BAI7kZ40UwIDAQAB',
       encryptedPrivateKey: 'mock-encrypted-private-key',
       role: 'USER',
       status: 'ACTIVE',
@@ -78,7 +78,7 @@ async function main() {
     data: {
       email: 'engineer2@zylkercorp.com',
       loginPassword: await hashPassword(demoMasterPassword),
-      publicKey: 'mock-public-key',
+      publicKey: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwCxmhdX9d6PJ/Hm6LfvI1bbNUt2OzsxSLBl38pLxTgCO+ebETPvH0YAA/RPn6Tw2Q0vwNT5t+m1O+aDA7VZMuYWO07Yd8EB3Suxweljtp7QdicS90IHVYuMGURSXvJxdOf/vq6wVDQM84/QxUNasX3NvvDMTHoGDe6fE6oj7PomiRy6VeKnfH8JFXDh8XSaVJ2L3cya2r+6lyftiPRX455uP67qv4/mlu1nOA6BRaSOpMIR3N46htoFwLpaBqOh9t8GO0/mCNmxBT3afu+7PjWJBqXzduAz1e7qC7wFr1rmEjhuwTFNxOyvjOSlDBHWT9EyPKCC88WH9BAI7kZ40UwIDAQAB',
       encryptedPrivateKey: 'mock-encrypted-private-key',
       role: 'USER',
       status: 'ACTIVE',

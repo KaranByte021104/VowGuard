@@ -64,7 +64,10 @@ export class AttachmentsService implements OnModuleInit {
       const share = await this.prisma.secretShare.findFirst({
         where: { secretId, recipientUserId: userId }
       });
-      if (!share) throw new ForbiddenException('Only owner or shared user can view attachments');
+      const approvedRequest = await this.prisma.accessRequest.findFirst({
+        where: { secretId, requesterId: userId, status: 'APPROVED', expiresAt: { gt: new Date() } }
+      });
+      if (!share && !approvedRequest) throw new ForbiddenException('Only owner, shared users, or users with approved access requests can view attachments');
     }
 
     return this.prisma.fileAttachment.findMany({
@@ -84,7 +87,10 @@ export class AttachmentsService implements OnModuleInit {
       const share = await this.prisma.secretShare.findFirst({
         where: { secretId: attachment.secret.id, recipientUserId: userId }
       });
-      if (!share) throw new ForbiddenException('Only owner or shared user can download attachments');
+      const approvedRequest = await this.prisma.accessRequest.findFirst({
+        where: { secretId: attachment.secret.id, requesterId: userId, status: 'APPROVED', expiresAt: { gt: new Date() } }
+      });
+      if (!share && !approvedRequest) throw new ForbiddenException('Only owner, shared users, or users with approved access requests can download attachments');
     }
 
     if (!fs.existsSync(attachment.encryptedBlobPath)) {

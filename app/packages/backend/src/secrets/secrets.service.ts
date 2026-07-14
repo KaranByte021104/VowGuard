@@ -42,11 +42,13 @@ export class SecretsService {
         OR: [
           { ownerId: userId },
           { shares: { some: { recipientUserId: userId } } },
+          { accessRequests: { some: { requesterId: userId, status: { in: ['APPROVED', 'PENDING'] } } } },
           { 
             accessControlEnabled: true,
             isPersonal: false,
             accessControlConfig: {
-              excludedUsers: { none: { userId } }
+              excludedUsers: { none: { userId } },
+              approvers: { some: {} }
             }
           }
         ]
@@ -72,13 +74,20 @@ export class SecretsService {
           include: { recipientUser: true }
         },
         thirdPartyInvites: true,
-        accessControlConfig: true,
+        accessControlConfig: {
+          include: { approvers: true }
+        },
         accessRequests: {
-          where: { requesterId: userId }
+          include: { requester: { select: { email: true } }, approvals: true }
         }
       }
     });
     if (!secret) throw new NotFoundException('Secret not found');
+    
+    // Filter access requests if user is not the owner
+    if (secret.ownerId !== userId) {
+      secret.accessRequests = secret.accessRequests.filter(r => r.requesterId === userId);
+    }
 
     if (secret.accessControlEnabled && secret.ownerId !== userId) {
       console.log('Access Control check for secret:', secret.id, 'user:', userId);
@@ -88,10 +97,20 @@ export class SecretsService {
       if (!hasShare) {
         // Must have an approved request that is not expired
         const sortedRequests = [...secret.accessRequests].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        const latestRequest = sortedRequests[0];
+        
+        if (!latestRequest || latestRequest.status === 'VOIDED') {
+          throw new ForbiddenException('Access Control is enabled. You must request access.');
+        }
+        if (latestRequest.status === 'PENDING') {
+          throw new ForbiddenException('Your access request is currently PENDING approval.');
+        }
+        if (latestRequest.status === 'DENIED') {
+          throw new ForbiddenException('Your access request was DENIED.');
+        }
+        
         const approvedRequest = sortedRequests.find(r => r.status === 'APPROVED');
-        console.log('approvedRequest:', approvedRequest);
         if (!approvedRequest) {
-          console.log('No approved request found. Throwing 403.');
           throw new ForbiddenException('Access Control is enabled. You must request access.');
         }
         if (approvedRequest.expiresAt && new Date() > approvedRequest.expiresAt) {

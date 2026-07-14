@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AlertTriangle, Trash2 } from 'lucide-react';
 import { useSessionStore } from '../store/session';
 import { apiFetch } from '../lib/apiFetch';
+import { Modal } from '../components/Modal';
 
 export function UserManagement() {
   const { user } = useSessionStore();
@@ -12,6 +13,10 @@ export function UserManagement() {
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [inviteError, setInviteError] = useState('');
+
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void}>({
+    isOpen: false, title: '', message: '', onConfirm: () => {}
+  });
 
   const fetchUsers = () => {
     apiFetch('http://localhost:3000/users', { credentials: 'include' })
@@ -46,26 +51,29 @@ export function UserManagement() {
   };
 
   const handleRemoveUser = async (targetUserId: string) => {
-    if (!window.confirm('Are you sure you want to completely remove this user from the organization? This action cannot be undone.')) {
-      return;
-    }
-    
-    setError('');
-    try {
-      const res = await apiFetch(`http://localhost:3000/users/${targetUserId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-      
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.message || 'Failed to remove user');
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remove User',
+      message: 'Are you sure you want to completely remove this user from the organization? This action cannot be undone.',
+      onConfirm: async () => {
+        setError('');
+        try {
+          const res = await apiFetch(`http://localhost:3000/users/${targetUserId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+          });
+          
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.message || 'Failed to remove user');
+          }
+          
+          fetchUsers();
+        } catch (e: any) {
+          setError(e.message);
+        }
       }
-      
-      fetchUsers();
-    } catch (e: any) {
-      setError(e.message);
-    }
+    });
   };
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -203,6 +211,16 @@ export function UserManagement() {
           </tbody>
         </table>
       </div>
+
+      <Modal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Remove User"
+        confirmColor="red"
+        onConfirm={confirmModal.onConfirm}
+      />
     </div>
   );
 }

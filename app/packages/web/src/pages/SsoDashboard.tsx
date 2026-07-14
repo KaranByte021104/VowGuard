@@ -15,6 +15,8 @@ export function SsoDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [grantedUsers, setGrantedUsers] = useState<string[]>([]);
   
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, appId: string}>({ isOpen: false, appId: '' });
+
   useEffect(() => {
     fetchApps();
     fetchUsers();
@@ -94,15 +96,25 @@ export function SsoDashboard() {
     }
   };
 
-  const handleDisableApp = async (appId: string) => {
-    if (confirm('Are you sure you want to disable this SSO application? Users will no longer be able to log in through it.')) {
-      await apiFetch(`http://localhost:3000/sso/apps/${appId}`, {
+  const handleDisableApp = (appId: string) => {
+    setConfirmModal({ isOpen: true, appId });
+  };
+
+  const confirmDisableApp = async () => {
+    if (!confirmModal.appId) return;
+    try {
+      await apiFetch(`http://localhost:3000/sso/apps/${confirmModal.appId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isEnabled: false }),
         credentials: 'include'
       });
       fetchApps();
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to disable app");
+    } finally {
+      setConfirmModal({ isOpen: false, appId: '' });
     }
   };
 
@@ -235,6 +247,16 @@ export function SsoDashboard() {
         {step === 2 && renderWizardStep2()}
         {step === 3 && renderWizardStep3()}
       </Modal>
+
+      <Modal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, appId: '' })}
+        title="Disable SSO Application"
+        message="Are you sure you want to disable this SSO application? Users will no longer be able to log in through it."
+        confirmText="Disable App"
+        confirmColor="red"
+        onConfirm={confirmDisableApp}
+      />
     </div>
   );
 }

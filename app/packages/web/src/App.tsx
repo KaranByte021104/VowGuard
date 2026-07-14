@@ -5,7 +5,6 @@ import { Toaster } from 'react-hot-toast';
 function App() {
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
-      <Toaster position="top-right" />
       <Navigation />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar placeholder */}

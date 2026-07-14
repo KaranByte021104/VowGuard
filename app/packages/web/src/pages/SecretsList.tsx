@@ -24,6 +24,7 @@ export function SecretsList() {
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
   const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean, title: string, message?: string, mode?: 'confirm' | 'prompt', promptPlaceholder?: string, onConfirm: (v?: string) => void, confirmColor?: 'red' | 'primary', confirmText?: string }>({ isOpen: false, title: '', onConfirm: () => {} });
   const [shareFolderModal, setShareFolderModal] = useState<{ isOpen: boolean, folderId: string, folderName: string }>({ isOpen: false, folderId: '', folderName: '' });
+  const [revokeModal, setRevokeModal] = useState({ isOpen: false, folderId: '', recipientId: '' });
 
   const { data: users } = useQuery({
     queryKey: ['users'],
@@ -174,10 +175,14 @@ export function SecretsList() {
     }
   };
 
-  const handleRevokeFolderShare = async (folderId: string, recipientId: string) => {
-    if (!confirm('Are you sure you want to revoke access for this user?')) return;
+  const handleRevokeFolderShare = (folderId: string, recipientId: string) => {
+    setRevokeModal({ isOpen: true, folderId, recipientId });
+  };
+
+  const confirmRevokeFolderShare = async () => {
+    if (!revokeModal.folderId || !revokeModal.recipientId) return;
     try {
-      const res = await apiFetch(`http://localhost:3000/folders/${folderId}/share/${recipientId}`, {
+      const res = await apiFetch(`http://localhost:3000/folders/${revokeModal.folderId}/share/${revokeModal.recipientId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
@@ -186,6 +191,8 @@ export function SecretsList() {
       refetchFolders();
     } catch (e: any) {
       toast.error(`Error revoking folder access: ${e.message}`);
+    } finally {
+      setRevokeModal({ isOpen: false, folderId: '', recipientId: '' });
     }
   };
 
@@ -565,6 +572,28 @@ export function SecretsList() {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={revokeModal.isOpen}
+        onClose={() => setRevokeModal({ isOpen: false, folderId: '', recipientId: '' })}
+        title="Revoke Folder Access"
+        message="Are you sure you want to revoke access for this user?"
+        confirmText="Revoke"
+        confirmColor="red"
+        onConfirm={confirmRevokeFolderShare}
+      />
+
+      <Modal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        mode={confirmModal.mode}
+        promptPlaceholder={confirmModal.promptPlaceholder}
+        confirmText={confirmModal.confirmText}
+        confirmColor={confirmModal.confirmColor}
+        onConfirm={confirmModal.onConfirm}
+      />
     </div>
   </div>
   );

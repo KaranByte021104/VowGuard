@@ -28,9 +28,14 @@ export function Approvals() {
     if (!req || !action) return;
     setLoading(true);
     
-    let finalKey = btoa('dummy-encrypted-item-key-provided-by-approver');
+    let finalKey = '';
     
-    if (action === 'approve' && privateKey && req.secret.encryptedItemKey && req.requester.publicKey) {
+    if (action === 'approve') {
+      if (!privateKey || !req.secret.encryptedItemKey || !req.requester.publicKey) {
+        toast.error('Missing cryptographic keys required to approve this request.');
+        setLoading(false);
+        return;
+      }
       try {
         const encryptedItemKeyBuf = Uint8Array.from(atob(req.secret.encryptedItemKey), c => c.charCodeAt(0)).buffer;
         const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
@@ -47,7 +52,9 @@ export function Approvals() {
         finalKey = window.btoa(binary);
       } catch (e) {
         console.error('Failed to encrypt key for requester', e);
-        toast.error('Cryptographic error during approval. The user will not be able to decrypt the secret.');
+        toast.error('Cryptographic error: You cannot approve this request because you do not have the required key (you must be the Owner or have the secret shared with you).');
+        setLoading(false);
+        return;
       }
     }
 
@@ -62,7 +69,7 @@ export function Approvals() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      toast.error(data.message);
+      toast.success(data.message);
       refetch();
     } catch (e: any) {
       toast.error(e.message || `Failed to ${action}`);

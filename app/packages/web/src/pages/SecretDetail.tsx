@@ -187,9 +187,18 @@ export function SecretDetail() {
       apiFetch(`http://localhost:3000/attachments/secret/${id}`, {
         credentials: "include",
       })
-        .then((res) => res.json())
-        .then(setAttachments)
-        .catch(console.error);
+        .then(async (res) => {
+          if (!res.ok) throw new Error(await res.text());
+          return res.json();
+        })
+        .then((data) => {
+          if (Array.isArray(data)) setAttachments(data);
+          else setAttachments([]);
+        })
+        .catch((err) => {
+          console.error(err);
+          setAttachments([]);
+        });
     } else if (activeTab === "history") {
       apiFetch(`http://localhost:3000/secrets/${id}/versions`, {
         credentials: "include",
@@ -280,7 +289,9 @@ export function SecretDetail() {
           automaticApprovalRule:
             secret.accessControlConfig.automaticApprovalRule || "NONE",
         });
-        // Approvers not included in this simple fetch, but could be.
+        if (secret.accessControlConfig.approvers) {
+          setAcApprovers(secret.accessControlConfig.approvers.map((a: any) => a.userId));
+        }
       }
     }
   }, [activeTab, id, secret]);
@@ -708,6 +719,28 @@ export function SecretDetail() {
     }
   };
 
+  const handleRevokeRequest = async (requestId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Revoke Access Request",
+      message: "Are you sure you want to revoke this access request?",
+      confirmText: "Revoke",
+      confirmColor: "red",
+      onConfirm: async () => {
+        try {
+          await apiFetch(`http://localhost:3000/requests/${requestId}/revoke`, {
+            method: "POST",
+            credentials: "include",
+          });
+          toast.success("Request revoked");
+          refetch();
+        } catch (e) {
+          toast.error("Failed to revoke request");
+        }
+      },
+    });
+  };
+
   const handleEnableAccessControl = async () => {
     try {
       const res = await apiFetch(
@@ -796,7 +829,7 @@ export function SecretDetail() {
             Your request has been successfully submitted and is pending
             approval. You will be able to access the secret once approved.
           </div>
-        ) : (
+        ) : lockReason?.includes("PENDING") ? null : (
           <div className="text-left space-y-4">
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Reason for Request
@@ -819,7 +852,10 @@ export function SecretDetail() {
         )}
         <div className="mt-6 flex flex-col gap-2 justify-center items-center">
           <button
-            onClick={() => refetch()}
+            onClick={() => {
+              setRequestSubmitted(false);
+              refetch();
+            }}
             className="px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded font-medium"
           >
             Refresh Status
@@ -1327,7 +1363,8 @@ export function SecretDetail() {
               Current Access
             </h3>
             {secret?.shares?.length === 0 &&
-            secret?.thirdPartyInvites?.length === 0 ? (
+            secret?.thirdPartyInvites?.length === 0 &&
+            (!secret?.accessRequests || secret.accessRequests.filter((r: any) => r.status === 'APPROVED' || r.status === 'PENDING').length === 0) ? (
               <p className="text-gray-500">Not shared with anyone.</p>
             ) : (
               <ul className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -1375,6 +1412,32 @@ export function SecretDetail() {
                     >
                       Revoke
                     </button>
+                  </li>
+                ))}
+                {secret?.accessRequests?.filter((r: any) => r.status === 'APPROVED' || r.status === 'PENDING').map((req: any) => (
+                  <li
+                    key={req.id}
+                    className="py-3 flex justify-between items-center"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                        {req.requester?.email} 
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                          Access Request
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Status: {req.status} {req.expiresAt ? `| Expires: ${new Date(req.expiresAt).toLocaleString()}` : ''}
+                      </p>
+                    </div>
+                    {user?.id === secret?.ownerId && (
+                      <button
+                        onClick={() => handleRevokeRequest(req.id)}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        Revoke
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -43,7 +43,34 @@ import { Toaster } from 'react-hot-toast';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <Toaster position="top-right" />
+      <Toaster 
+        position="top-right" 
+        toastOptions={{
+          style: {
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            color: '#1f2937',
+            borderRadius: '12px',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            border: '1px solid rgba(229, 231, 235, 1)',
+            padding: '12px 16px',
+            fontWeight: 500,
+          },
+          success: {
+            iconTheme: {
+              primary: '#10B981',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: '#fff',
+            },
+          },
+          className: '!bg-white/90 dark:!bg-gray-800/90 dark:!text-white dark:!border-gray-700 !backdrop-blur-md',
+        }}
+      />
       <BrowserRouter>
         <Routes>
           <Route path="/signup" element={<Signup />} />
