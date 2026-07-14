@@ -1,7 +1,5 @@
 # SecureVault Architecture
 
-This diagram visualizes the components of SecureVault as outlined in TRD Section 11.
-
 ```mermaid
 flowchart TD
     subgraph Client ["Client Tier"]
