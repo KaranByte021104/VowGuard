@@ -1,6 +1,5 @@
 # SecureVault Database ERD
 
-This diagram visualizes the PostgreSQL database schema as outlined in TRD Section 9.
 
 ```mermaid
 erDiagram
