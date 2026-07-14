@@ -40,7 +40,10 @@ export class AlertsService {
   private async sendAlert(rule: any, auditLog: any) {
     let recipients: string[] = [];
     if (rule.recipientType === 'ALL_ADMINS') {
-      recipients.push('all-admins@example.com');
+      const admins = await this.prisma.user.findMany({
+        where: { organizationId: rule.organizationId, role: { in: ['ADMIN', 'SUPER_ADMIN'] } }
+      });
+      recipients = admins.map(admin => admin.email);
     } else {
       recipients = rule.specificUsers.map(su => su.user.email);
     }
@@ -50,10 +53,20 @@ export class AlertsService {
     this.logger.log(`[ALERT TRIGGERED] Rule: ${rule.name} | Event: ${auditLog.action} | To: ${recipients.join(', ')}`);
 
     try {
+      let targetInfo = '';
+      if (auditLog.details) {
+        try {
+          const parsedDetails = JSON.parse(auditLog.details);
+          if (parsedDetails?.body?.email) {
+            targetInfo = `\nTarget Email: ${parsedDetails.body.email}`;
+          }
+        } catch(e) {}
+      }
+
       await this.mailerService.sendMail({
         to: recipients,
         subject: `Security Alert: ${rule.name}`,
-        text: `An event matching the rule "${rule.name}" has occurred.\nAction: ${auditLog.action}\nTime: ${new Date().toISOString()}`,
+        text: `An event matching the rule "${rule.name}" has occurred.\nAction: ${auditLog.action}\nTime: ${new Date().toISOString()}${targetInfo}`,
       });
       this.logger.log(`Successfully sent email alert to: ${recipients.join(', ')}`);
     } catch (e) {

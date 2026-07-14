@@ -24,11 +24,11 @@ export class AlertsController {
       return this.prisma.notificationRule.update({
         where: { id: body.id, organizationId: req.user.organizationId },
         data: {
-          name: body.name,
-          eventTypes: body.eventTypes,
-          recipientType: body.recipientType,
-          timing: body.timing,
-          isEnabled: body.isEnabled
+          ...(body.name && { name: body.name }),
+          ...(body.eventTypes && { eventTypes: body.eventTypes }),
+          ...(body.recipientType && { recipientType: body.recipientType }),
+          ...(body.timing && { timing: body.timing }),
+          ...(body.isEnabled !== undefined && { isEnabled: body.isEnabled })
         }
       });
     } else {

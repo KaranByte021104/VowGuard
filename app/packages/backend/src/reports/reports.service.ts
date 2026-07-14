@@ -74,6 +74,78 @@ export class ReportsService {
 
     const totalShares = await this.prisma.secretShare.count({ where: { secret: { organizationId } } });
     const auditLogsCount = await this.prisma.auditLog.count({ where: { organizationId } });
+    const totalSsoApps = await this.prisma.sAMLApp.count({ where: { organizationId } });
+    
+    // Generate Password Actions Data
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const recentLogs = await this.prisma.auditLog.findMany({
+      where: { organizationId, createdAt: { gte: thirtyDaysAgo } },
+      select: { action: true, createdAt: true }
+    });
+
+    const createBuckets = (interval: string): any[] => {
+       if (interval === 'Today' || interval === 'Yesterday') {
+         return [
+           { name: "00:00", added: 0, modified: 0, accessed: 0, _start: 0, _end: 6 },
+           { name: "06:00", added: 0, modified: 0, accessed: 0, _start: 6, _end: 12 },
+           { name: "12:00", added: 0, modified: 0, accessed: 0, _start: 12, _end: 18 },
+           { name: "18:00", added: 0, modified: 0, accessed: 0, _start: 18, _end: 24 },
+         ];
+       } else if (interval === 'Last 7 Days') {
+         return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((day, i) => ({ name: day, added: 0, modified: 0, accessed: 0, _day: i }));
+       } else if (interval === 'Last Month') {
+         return ["Week 1","Week 2","Week 3","Week 4"].map((wk, i) => ({ name: wk, added: 0, modified: 0, accessed: 0, _week: i }));
+       }
+       return [];
+    };
+
+    const passwordActions: Record<string, any[]> = {
+       "Today": createBuckets('Today'),
+       "Yesterday": createBuckets('Yesterday'),
+       "Last 7 Days": createBuckets('Last 7 Days'),
+       "Last Month": createBuckets('Last Month')
+    };
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const sevenDaysAgoStart = new Date(todayStart);
+    sevenDaysAgoStart.setDate(sevenDaysAgoStart.getDate() - 7);
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    for (const log of recentLogs) {
+       const logDate = log.createdAt;
+       let actionType = 'accessed';
+       if (log.action.startsWith('POST /secrets')) actionType = 'added';
+       else if (log.action.startsWith('PUT /secrets') || log.action.startsWith('PATCH /secrets')) actionType = 'modified';
+       else if (log.action.startsWith('GET /secrets')) actionType = 'accessed';
+       else continue; // don't count other actions
+
+       if (logDate >= todayStart) {
+         const hour = logDate.getHours();
+         const bucket = passwordActions["Today"].find(b => hour >= b._start && hour < b._end);
+         if (bucket) bucket[actionType]++;
+       } else if (logDate >= yesterdayStart && logDate < todayStart) {
+         const hour = logDate.getHours();
+         const bucket = passwordActions["Yesterday"].find(b => hour >= b._start && hour < b._end);
+         if (bucket) bucket[actionType]++;
+       }
+       
+       if (logDate >= sevenDaysAgoStart) {
+         const day = logDate.getDay();
+         const bucket = passwordActions["Last 7 Days"].find(b => b._day === day);
+         if (bucket) bucket[actionType]++;
+       }
+
+       if (logDate >= thisMonthStart) {
+         const date = logDate.getDate();
+         let week = Math.floor((date - 1) / 7);
+         if (week > 3) week = 3;
+         passwordActions["Last Month"][week][actionType]++;
+       }
+    }
 
     const data = {
       userAccess: { total: totalUsers },
@@ -81,6 +153,8 @@ export class ReportsService {
       folders: { total: totalFolders },
       sharing: { total: totalShares },
       auditEvents: auditLogsCount,
+      ssoApps: { total: totalSsoApps },
+      passwordActions,
       team,
       personal,
       overview: {

@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -165,11 +166,11 @@ export function SecretsList() {
         throw new Error(err.message || 'Failed to share folder');
       }
       
-      alert('Folder shared successfully!');
+      toast.success('Folder shared successfully!');
       setShareFolderModal({ isOpen: false, folderId: '', folderName: '' });
       refetchFolders();
     } catch (e: any) {
-      alert(`Error sharing folder: ${e.message}`);
+      toast.error(`Error sharing folder: ${e.message}`);
     }
   };
 
@@ -181,10 +182,10 @@ export function SecretsList() {
         credentials: 'include'
       });
       if (!res.ok) throw new Error('Failed to revoke share');
-      alert('Access revoked successfully.');
+      toast.success('Access revoked successfully.');
       refetchFolders();
     } catch (e: any) {
-      alert(`Error revoking folder access: ${e.message}`);
+      toast.error(`Error revoking folder access: ${e.message}`);
     }
   };
 
@@ -230,7 +231,7 @@ export function SecretsList() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
-      alert(`Export Failed: ${e.message}`);
+      toast.error(`Export Failed: ${e.message}`);
     }
   };
 
@@ -552,7 +553,7 @@ export function SecretsList() {
               onClick={() => {
                 const userSelect = document.getElementById('shareUserSelect') as HTMLSelectElement;
                 const permSelect = document.getElementById('sharePermissionSelect') as HTMLSelectElement;
-                if (!userSelect.value) return alert('Please select a user');
+                if (!userSelect.value) return toast.error('Please select a user');
                 submitFolderShare(userSelect.value, permSelect.value);
               }}
               className="px-4 py-2 bg-primary text-white hover:bg-blue-700 rounded-lg"

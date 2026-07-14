@@ -95,7 +95,7 @@ export function AddSecret() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!publicKey) {
-      alert("Vault is locked. Cannot encrypt.");
+      toast.error("Vault is locked. Cannot encrypt.");
       return;
     }
 

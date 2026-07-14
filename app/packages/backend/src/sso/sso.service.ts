@@ -143,6 +143,34 @@ export class SsoService {
     return idp.getMetadata();
   }
 
+  async handleSpInitiatedLogin(userId: string, organizationId: string, samlRequestBase64: string, relayState: string) {
+    const zlib = require('zlib');
+    const buf = Buffer.from(decodeURIComponent(samlRequestBase64), 'base64');
+    let xml = '';
+    try {
+      xml = zlib.inflateRawSync(buf).toString();
+    } catch (e) {
+      xml = buf.toString(); 
+    }
+    
+    const issuerMatch = xml.match(/<saml:Issuer[^>]*>([^<]+)<\/saml:Issuer>/);
+    if (!issuerMatch) throw new Error('Invalid SAMLRequest: No Issuer found');
+    const audienceUri = issuerMatch[1].trim();
+
+    let app = await this.prisma.sAMLApp.findFirst({
+      where: { organizationId, audienceUri }
+    });
+    
+    if (!app) {
+      const apps = await this.prisma.sAMLApp.findMany({ where: { organizationId } });
+      app = apps.find(a => a.audienceUri === audienceUri || a.audienceUri + '/' === audienceUri || a.audienceUri === audienceUri + '/') || null;
+      if (!app) throw new NotFoundException('SAML App not found for this Issuer: ' + audienceUri);
+    }
+
+    const response = await this.initiateSamlLogin(userId, organizationId, app.id);
+    return { ...response, relayState };
+  }
+
   async initiateSamlLogin(userId: string, organizationId: string, appId: string) {
     const app = await this.getSamlApp(appId, organizationId);
     if (!app.isEnabled) throw new ForbiddenException('This application is disabled');

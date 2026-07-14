@@ -33,35 +33,7 @@ const COLORS = [
   "#8b5cf6",
 ];
 
-const dummyActionsData: Record<string, any[]> = {
-  Today: [
-    { name: "00:00", added: 0, modified: 0, accessed: 1 },
-    { name: "06:00", added: 0, modified: 0, accessed: 2 },
-    { name: "12:00", added: 1, modified: 0, accessed: 5 },
-    { name: "18:00", added: 2, modified: 1, accessed: 3 },
-  ],
-  Yesterday: [
-    { name: "00:00", added: 0, modified: 0, accessed: 0 },
-    { name: "06:00", added: 0, modified: 1, accessed: 4 },
-    { name: "12:00", added: 0, modified: 0, accessed: 8 },
-    { name: "18:00", added: 0, modified: 0, accessed: 2 },
-  ],
-  "Last 7 Days": [
-    { name: "Mon", added: 4, modified: 2, accessed: 10 },
-    { name: "Tue", added: 1, modified: 0, accessed: 15 },
-    { name: "Wed", added: 0, modified: 1, accessed: 12 },
-    { name: "Thu", added: 3, modified: 3, accessed: 8 },
-    { name: "Fri", added: 2, modified: 0, accessed: 20 },
-    { name: "Sat", added: 0, modified: 0, accessed: 5 },
-    { name: "Sun", added: 0, modified: 0, accessed: 2 },
-  ],
-  "Last Month": [
-    { name: "Week 1", added: 12, modified: 4, accessed: 45 },
-    { name: "Week 2", added: 5, modified: 8, accessed: 50 },
-    { name: "Week 3", added: 8, modified: 2, accessed: 65 },
-    { name: "Week 4", added: 3, modified: 1, accessed: 40 },
-  ],
-};
+
 
 export function Dashboard() {
   const { user } = useSessionStore();
@@ -237,7 +209,7 @@ export function Dashboard() {
             <Cloud className="w-5 h-5 text-red-500" />
           </div>
           <div className="text-3xl font-bold text-red-600 dark:text-red-400">
-            0
+            {stats.ssoApps?.total || 0}
           </div>
         </div>
       </div>
@@ -284,7 +256,9 @@ export function Dashboard() {
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
               Password Assessment Score
             </h3>
-            <Info className="w-4 h-4 text-blue-500" />
+            <div title="This score represents the overall strength and security of your passwords based on various criteria.">
+              <Info className="w-4 h-4 text-blue-500 cursor-help" />
+            </div>
           </div>
 
           <div className="flex flex-col md:flex-row items-center justify-around h-64">
@@ -430,7 +404,7 @@ export function Dashboard() {
             <ResponsiveContainer width="100%" height="100%">
               {/* Note: I need to import LineChart, Line from recharts too */}
               <BarChart
-                data={dummyActionsData[actionRange] || []}
+                data={stats.passwordActions?.[actionRange] || []}
                 margin={{ top: 5, right: 0, left: -20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />

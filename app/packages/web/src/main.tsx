@@ -14,6 +14,7 @@ import { Approvals } from './pages/Approvals';
 import { EmergencyAccess } from './pages/EmergencyAccess';
 import { EmergencyVault } from './pages/EmergencyVault';
 import { SsoDashboard } from './pages/SsoDashboard';
+import { SsoDispatch } from './pages/SsoDispatch';
 import { ConnectedApps } from './pages/ConnectedApps';
 import { CloudBackup } from './pages/CloudBackup';
 import { Dashboard } from './pages/Dashboard';
@@ -47,6 +48,7 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/sso-dispatch" element={<SsoDispatch />} />
           <Route path="/" element={<AuthGuard><App /></AuthGuard>}>
             <Route index element={<Dashboard />} />
             <Route path="secrets" element={<SecretsList />} />

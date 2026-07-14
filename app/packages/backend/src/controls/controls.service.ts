@@ -8,7 +8,13 @@ export class ControlsService {
   async getControls(organizationId: string) {
     const controls = await this.prisma.fineGrainedControl.findMany({
       where: { organizationId },
-      include: { exemptions: true }
+      include: { 
+        exemptions: {
+          include: {
+            user: { select: { email: true } }
+          }
+        }
+      }
     });
     
     // Ensure default controls exist

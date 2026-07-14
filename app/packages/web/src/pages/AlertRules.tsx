@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Bell, Plus, Clock, Zap, Settings } from 'lucide-react';
@@ -31,7 +32,7 @@ export function AlertRules() {
       const data = {
         id: editingRule?.id,
         name: formData.get('name'),
-        eventType: formData.get('eventType') ? [formData.get('eventType')] : [],
+        eventTypes: formData.get('eventType') ? [formData.get('eventType')] : [],
         timing: formData.get('timing'),
         recipientType: formData.get('recipientType'),
       };
@@ -47,7 +48,22 @@ export function AlertRules() {
       refetch();
       setIsModalOpen(false);
     } catch (err: any) {
-      alert(err.message || 'Error saving rule');
+      toast.error(err.message || 'Error saving rule');
+    }
+  };
+
+  const handleToggle = async (rule: any) => {
+    try {
+      const res = await apiFetch('http://localhost:3000/alerts/rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ...rule, isEnabled: !rule.isEnabled })
+      });
+      if (!res.ok) throw new Error('Failed to toggle rule');
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message);
     }
   };
 
@@ -104,7 +120,12 @@ export function AlertRules() {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center justify-end gap-3">
-                    <div className={`h-2.5 w-2.5 rounded-full ${rule.enabled ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                    <button 
+                      onClick={() => handleToggle(rule)}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${rule.isEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${rule.isEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                    </button>
                     <button onClick={() => handleOpenModal(rule)} className="text-gray-400 hover:text-gray-500 transition-colors">
                       <Settings className="w-5 h-5" />
                     </button>

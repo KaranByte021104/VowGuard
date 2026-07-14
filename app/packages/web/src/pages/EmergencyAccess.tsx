@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { ShieldAlert, Trash2, Plus, Clock, User, AlertTriangle } from 'lucide-react';
 import { useSessionStore } from '../store/session';
@@ -125,7 +126,7 @@ export function EmergencyAccess() {
       fetchContacts();
     } catch (e) {
       console.error(e);
-      alert('Failed to add contact');
+      toast.error('Failed to add contact');
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +152,7 @@ export function EmergencyAccess() {
       }
       fetchReceivedGrants();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 

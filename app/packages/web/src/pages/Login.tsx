@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Eye, EyeOff } from 'lucide-react';
@@ -161,7 +162,7 @@ export function Login() {
         body: JSON.stringify({ email: formData.email })
       });
       if (!res.ok) throw new Error('Failed to request reset');
-      alert('If the email exists, a reset link has been sent to your inbox.');
+      toast.error('If the email exists, a reset link has been sent to your inbox.');
       setStep(4); // Move to token entry
     } catch (err: any) {
       setError(err.message);
@@ -191,7 +192,7 @@ export function Login() {
         throw new Error(errData.message || 'Failed to reset password');
       }
       
-      alert('Password reset successfully. You can now log in.');
+      toast.success('Password reset successfully. You can now log in.');
       setStep(1);
     } catch (err: any) {
       setError(err.message);

@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { Server, ArrowRight } from 'lucide-react';
 import { apiFetch } from '../lib/apiFetch';
@@ -54,7 +55,7 @@ export function ConnectedApps() {
       
     } catch (e) {
       console.error(e);
-      alert('Failed to initiate login to the application');
+      toast.error('Failed to initiate login to the application');
     }
   };
 

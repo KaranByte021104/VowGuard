@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import { useState, useEffect } from 'react';
 import { useSessionStore } from '../store/session';
 import { Plus, Server, Download } from 'lucide-react';
@@ -53,7 +54,7 @@ export function SsoDashboard() {
         setStep(2);
         fetchApps();
       } else {
-        alert('Failed to create app');
+        toast.error('Failed to create app');
       }
     } catch (e) {
       console.error(e);

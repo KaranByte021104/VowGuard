@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Modal } from '../components/Modal';
@@ -43,7 +44,7 @@ export function Sharing() {
       setModalState({ isOpen: false, mode: 'create_group' });
     } catch (e: any) {
       console.error(e);
-      alert(e.message || 'Error creating group');
+      toast.error(e.message || 'Error creating group');
     }
   };
 
@@ -57,7 +58,7 @@ export function Sharing() {
       refetch();
     } catch (e: any) {
       console.error(e);
-      alert(e.message || 'Error deleting group');
+      toast.error(e.message || 'Error deleting group');
     }
   };
 
@@ -79,7 +80,7 @@ export function Sharing() {
       setModalState({ isOpen: false, mode: 'add_member' });
     } catch (e: any) {
       console.error(e);
-      alert(e.message || 'Error adding member.');
+      toast.error(e.message || 'Error adding member.');
     }
   };
 
@@ -93,7 +94,7 @@ export function Sharing() {
       refetch();
     } catch (e: any) {
       console.error(e);
-      alert(e.message || 'Error removing member');
+      toast.error(e.message || 'Error removing member');
     }
   };
 

@@ -66,6 +66,21 @@ export class SsoController {
     return this.ssoService.getUserAccessibleApps(req.user.id, req.user.organizationId);
   }
 
+  @Get('login/:orgId')
+  async spInitiatedLoginRedirect(@Param('orgId') orgId: string, @Req() req: any, @Res() res: Response) {
+    const frontendUrl = new URL('http://localhost:5173/sso-dispatch');
+    frontendUrl.searchParams.set('orgId', orgId);
+    if (req.query.SAMLRequest) frontendUrl.searchParams.set('SAMLRequest', req.query.SAMLRequest as string);
+    if (req.query.RelayState) frontendUrl.searchParams.set('RelayState', req.query.RelayState as string);
+    return res.redirect(frontendUrl.toString());
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('login-sp/:orgId')
+  async generateSamlResponseForSp(@Req() req: any, @Param('orgId') orgId: string, @Body() body: { SAMLRequest: string; RelayState?: string }) {
+    return this.ssoService.handleSpInitiatedLogin(req.user.id, orgId, body.SAMLRequest, body.RelayState || '');
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('login/:appId')
   async initiateLogin(@Req() req, @Param('appId') appId: string) {

@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ShieldAlert, CheckCircle, XCircle } from 'lucide-react';
@@ -46,7 +47,7 @@ export function Approvals() {
         finalKey = window.btoa(binary);
       } catch (e) {
         console.error('Failed to encrypt key for requester', e);
-        alert('Cryptographic error during approval. The user will not be able to decrypt the secret.');
+        toast.error('Cryptographic error during approval. The user will not be able to decrypt the secret.');
       }
     }
 
@@ -61,10 +62,10 @@ export function Approvals() {
       });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      alert(data.message);
+      toast.error(data.message);
       refetch();
     } catch (e: any) {
-      alert(e.message || `Failed to ${action}`);
+      toast.error(e.message || `Failed to ${action}`);
     } finally {
       setLoading(false);
       setModalState({ isOpen: false, req: null, action: null });

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Shield, Smartphone, AlertCircle } from 'lucide-react';
-import { useSessionStore } from '../store/session';
 import { apiFetch } from '../lib/apiFetch';
 
 export function SecuritySettings() {

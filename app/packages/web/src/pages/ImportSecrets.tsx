@@ -1,3 +1,4 @@
+import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSessionStore } from '../store/session';
@@ -79,7 +80,7 @@ export function ImportSecrets() {
         setProgress(i + 1);
       }
 
-      alert(`Successfully imported ${dataRows.length} secrets.`);
+      toast.success(`Successfully imported ${dataRows.length} secrets.`);
       navigate('/secrets');
     } catch (e) {
       console.error(e);
