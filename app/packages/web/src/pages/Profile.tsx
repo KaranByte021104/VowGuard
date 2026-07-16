@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useSessionStore } from '../store/session';
 import { apiFetch } from '../lib/apiFetch';
 import { Shield, Save, Upload } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 
 export function Profile() {
   const { user, setUser } = useSessionStore();
@@ -61,7 +64,7 @@ export function Profile() {
     <div className="space-y-6">
       <div className="flex items-center gap-3 mb-8">
         <Shield className="w-8 h-8 text-primary" />
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Profile Settings</h1>
+        <h1 className="text-2xl font-bold text-foreground">Profile Settings</h1>
       </div>
 
       {message && (
@@ -75,15 +78,15 @@ export function Profile() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
         <div className="p-6">
           <div className="space-y-8">
               <div className="flex items-center gap-6">
                 <div className="relative group">
                   {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-gray-100 dark:border-gray-700" />
+                    <img src={user.avatarUrl} alt="Avatar" className="w-24 h-24 rounded-full object-cover border-4 border-muted" />
                   ) : (
-                    <div className="w-24 h-24 rounded-full bg-primary/20 text-primary flex items-center justify-center text-3xl font-bold border-4 border-gray-100 dark:border-gray-700">
+                    <div className="w-24 h-24 rounded-full bg-primary/20 text-primary flex items-center justify-center text-3xl font-bold border-4 border-muted">
                       {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                     </div>
                   )}
@@ -93,33 +96,31 @@ export function Profile() {
                   </label>
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Profile Picture</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Upload a new avatar. Max size 5MB.</p>
+                  <h3 className="text-lg font-medium text-foreground">Profile Picture</h3>
+                  <p className="text-sm text-muted-foreground">Upload a new avatar. Max size 5MB.</p>
                 </div>
               </div>
 
               <form onSubmit={handleUpdateProfile} className="space-y-4 max-w-md">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
-                  <input
+                <div className="space-y-1">
+                  <Label>Full Name</Label>
+                  <Input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
-                  <input
+                <div className="space-y-1">
+                  <Label>Email Address</Label>
+                  <Input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
-                <button type="submit" className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                  <Save className="w-4 h-4" /> Save Changes
-                </button>
+                <Button type="submit">
+                  <Save className="w-4 h-4 mr-2" /> Save Changes
+                </Button>
               </form>
             </div>
         </div>

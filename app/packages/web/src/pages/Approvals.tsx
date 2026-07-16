@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ShieldAlert, CheckCircle, XCircle } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { useSessionStore } from '../store/session';
+import { Button } from '../components/ui/button';
 import { decryptItemKeyWithPrivateKey, encryptItemKeyWithPublicKey, importPublicKey } from '@app/shared/src/crypto';
 import { apiFetch } from '../lib/apiFetch';
 
@@ -108,20 +109,20 @@ export function Approvals() {
               </div>
               
               <div className="flex flex-col gap-2 ml-6 min-w-[120px]">
-                <button 
+                <Button 
                   onClick={() => setModalState({ isOpen: true, req, action: 'approve' })}
                   disabled={loading}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded font-medium flex items-center justify-center gap-2"
+                  className="bg-status-success hover:bg-status-success/90 text-white"
                 >
-                  <CheckCircle className="w-4 h-4" /> Approve
-                </button>
-                <button 
+                  <CheckCircle className="w-4 h-4 mr-2" /> Approve
+                </Button>
+                <Button 
                   onClick={() => setModalState({ isOpen: true, req, action: 'deny' })}
                   disabled={loading}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded font-medium flex items-center justify-center gap-2"
+                  variant="destructive"
                 >
-                  <XCircle className="w-4 h-4" /> Deny
-                </button>
+                  <XCircle className="w-4 h-4 mr-2" /> Deny
+                </Button>
               </div>
             </div>
           ))}

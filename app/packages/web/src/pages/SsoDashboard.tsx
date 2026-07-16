@@ -4,6 +4,9 @@ import { useSessionStore } from '../store/session';
 import { Plus, Server, Download } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { apiFetch } from '../lib/apiFetch';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
 
 export function SsoDashboard() {
   const { user } = useSessionStore();
@@ -121,63 +124,63 @@ export function SsoDashboard() {
   const renderWizardStep1 = () => (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">App Name</label>
-        <input type="text" value={newApp.name} onChange={e => setNewApp({ ...newApp, name: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+        <label className="block text-sm font-medium text-foreground mb-1">App Name</label>
+        <Input type="text" value={newApp.name} onChange={e => setNewApp({ ...newApp, name: e.target.value })} />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-        <input type="text" value={newApp.description} onChange={e => setNewApp({ ...newApp, description: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+        <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+        <Input type="text" value={newApp.description} onChange={e => setNewApp({ ...newApp, description: e.target.value })} />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Assertion Consumer Service (ACS) URL</label>
-        <input type="url" value={newApp.acsUrl} onChange={e => setNewApp({ ...newApp, acsUrl: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="https://app.example.com/saml/acs" />
+        <label className="block text-sm font-medium text-foreground mb-1">Assertion Consumer Service (ACS) URL</label>
+        <Input type="url" value={newApp.acsUrl} onChange={e => setNewApp({ ...newApp, acsUrl: e.target.value })} placeholder="https://app.example.com/saml/acs" />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Audience URI (Entity ID)</label>
-        <input type="text" value={newApp.audienceUri} onChange={e => setNewApp({ ...newApp, audienceUri: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="https://app.example.com/saml/metadata" />
+        <label className="block text-sm font-medium text-foreground mb-1">Audience URI (Entity ID)</label>
+        <Input type="text" value={newApp.audienceUri} onChange={e => setNewApp({ ...newApp, audienceUri: e.target.value })} placeholder="https://app.example.com/saml/metadata" />
       </div>
       <div className="flex justify-end pt-4">
-        <button onClick={handleCreateApp} disabled={!newApp.name || !newApp.acsUrl || !newApp.audienceUri} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 disabled:opacity-50">Next: IdP Configuration</button>
+        <Button onClick={handleCreateApp} disabled={!newApp.name || !newApp.acsUrl || !newApp.audienceUri}>Next: IdP Configuration</Button>
       </div>
     </div>
   );
 
   const renderWizardStep2 = () => (
     <div className="space-y-6">
-      <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4">
+      <div className="bg-blue-50/50 border border-blue-200/50 text-blue-800 dark:text-blue-300 dark:bg-blue-900/20 dark:border-blue-800/50 rounded-lg p-4">
         <h4 className="font-semibold mb-1">Identity Provider Setup</h4>
         <p className="text-sm">Download the metadata XML file below and upload it to the target application's SSO settings. This contains the VowGuard signing certificates and Login URLs.</p>
       </div>
       <div className="flex justify-center">
-        <button onClick={handleDownloadMetadata} className="flex items-center gap-2 bg-white border border-gray-300 px-6 py-3 rounded-lg shadow-sm hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700">
-          <Download className="w-5 h-5 text-indigo-600" />
+        <Button variant="outline" size="lg" onClick={handleDownloadMetadata}>
+          <Download className="w-5 h-5 text-primary mr-2" />
           Download IdP Metadata XML
-        </button>
+        </Button>
       </div>
       <div className="flex justify-end pt-4">
-        <button onClick={() => setStep(3)} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Next: Manage Access</button>
+        <Button onClick={() => setStep(3)}>Next: Manage Access</Button>
       </div>
     </div>
   );
 
   const renderWizardStep3 = () => (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500 dark:text-gray-400">Select which users are allowed to use this application via SSO.</p>
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg max-h-64 overflow-y-auto">
+      <p className="text-sm text-muted-foreground">Select which users are allowed to use this application via SSO.</p>
+      <div className="border border-border rounded-lg max-h-64 overflow-y-auto bg-card">
         {users.map(u => (
-          <div key={u.id} className="flex items-center justify-between p-3 border-b border-gray-100 dark:border-gray-700 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-800">
+          <div key={u.id} className="flex items-center justify-between p-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors">
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-white">{u.email}</p>
-              <p className="text-xs text-gray-500">{u.role}</p>
+              <p className="text-sm font-medium text-foreground">{u.email}</p>
+              <p className="text-xs text-muted-foreground">{u.role}</p>
             </div>
-            <button onClick={() => toggleGrant(u.id)} className={`px-3 py-1 rounded-full text-xs font-medium ${grantedUsers.includes(u.id) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            <Button size="sm" variant={grantedUsers.includes(u.id) ? 'default' : 'secondary'} className={grantedUsers.includes(u.id) ? 'bg-status-success hover:bg-status-success/90 text-white' : ''} onClick={() => toggleGrant(u.id)}>
               {grantedUsers.includes(u.id) ? 'Granted' : 'Grant Access'}
-            </button>
+            </Button>
           </div>
         ))}
       </div>
       <div className="flex justify-end pt-4">
-        <button onClick={() => { setIsWizardOpen(false); setStep(1); fetchApps(); }} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Complete Registration</button>
+        <Button onClick={() => { setIsWizardOpen(false); setStep(1); fetchApps(); }}>Complete Registration</Button>
       </div>
     </div>
   );
@@ -186,35 +189,35 @@ export function SsoDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">SSO Applications</h1>
-          <p className="text-gray-500 dark:text-gray-400">Manage SAML applications available to your organization.</p>
+          <h1 className="text-2xl font-bold text-foreground">SSO Applications</h1>
+          <p className="text-muted-foreground">Manage SAML applications available to your organization.</p>
         </div>
-        <button onClick={() => { setStep(1); setNewApp({ name: '', description: '', acsUrl: '', audienceUri: '' }); setGrantedUsers([]); setCreatedAppId(null); setIsWizardOpen(true); }} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
-          <Plus className="w-4 h-4" /> Register New App
-        </button>
+        <Button onClick={() => { setStep(1); setNewApp({ name: '', description: '', acsUrl: '', audienceUri: '' }); setGrantedUsers([]); setCreatedAppId(null); setIsWizardOpen(true); }}>
+          <Plus className="w-4 h-4 mr-2" /> Register New App
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {apps.map(app => (
-          <div key={app.id} className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border ${app.isEnabled ? 'border-gray-200 dark:border-gray-700' : 'border-red-200 bg-red-50 dark:bg-red-900/10'} p-6`}>
+          <div key={app.id} className={`bg-card rounded-xl shadow-sm border ${app.isEnabled ? 'border-border' : 'border-destructive bg-destructive/10'} p-6`}>
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                   <Server className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <h3 className="font-bold text-foreground flex items-center gap-2">
                     {app.name}
-                    {!app.isEnabled && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Disabled</span>}
+                    {!app.isEnabled && <Badge variant="destructive">Disabled</Badge>}
                   </h3>
-                  <p className="text-sm text-gray-500 line-clamp-1">{app.description}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{app.description}</p>
                 </div>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center text-sm">
-              <span className="text-gray-500">{app._count?.accesses || 0} users granted</span>
+            <div className="mt-4 pt-4 border-t border-border flex justify-between items-center text-sm">
+              <span className="text-muted-foreground">{app._count?.accesses || 0} users granted</span>
               {app.isEnabled && (
-                <button onClick={() => handleDisableApp(app.id)} className="text-red-600 hover:text-red-800 font-medium">Disable</button>
+                <Button variant="ghost" size="sm" onClick={() => handleDisableApp(app.id)} className="text-destructive hover:text-destructive hover:bg-destructive/10">Disable</Button>
               )}
             </div>
           </div>

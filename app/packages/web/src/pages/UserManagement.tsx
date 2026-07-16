@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Trash2 } from 'lucide-react';
+import { AlertTriangle, Trash2, Mail } from 'lucide-react';
 import { useSessionStore } from '../store/session';
 import { apiFetch } from '../lib/apiFetch';
 import { Modal } from '../components/Modal';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Badge } from '../components/ui/badge';
 
 export function UserManagement() {
   const { user } = useSessionStore();
@@ -117,33 +122,32 @@ export function UserManagement() {
             <p className="text-gray-500 dark:text-gray-400">Manage user roles and permissions within your organization.</p>
           </div>
         </div>
-        <button 
+        <Button 
           onClick={() => { setInviteModalOpen(true); setInviteSuccess(''); setInviteEmail(''); }}
-          className="bg-primary text-white px-4 py-2 rounded shadow text-sm font-medium hover:bg-blue-600 transition"
         >
-          Invite User
-        </button>
+          <Mail className="w-4 h-4 mr-2" /> Invite User
+        </Button>
       </div>
 
       {inviteModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Invite New User</h3>
+          <div className="bg-card p-6 rounded-lg shadow-lg w-full max-w-md border border-border">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Invite New User</h3>
             {inviteSuccess ? (
               <div className="space-y-4">
-                <p className="text-sm text-green-600 font-medium">{inviteSuccess}</p>
-                <button onClick={() => setInviteModalOpen(false)} className="w-full bg-gray-200 text-gray-800 py-2 rounded text-sm font-medium hover:bg-gray-300">Close</button>
+                <p className="text-sm text-status-success font-medium">{inviteSuccess}</p>
+                <Button onClick={() => setInviteModalOpen(false)} className="w-full" variant="outline">Close</Button>
               </div>
             ) : (
               <form onSubmit={handleInvite} className="space-y-4">
-                {inviteError && <div className="text-red-600 text-sm">{inviteError}</div>}
+                {inviteError && <div className="text-status-danger text-sm">{inviteError}</div>}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email Address</label>
-                  <input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} className="w-full border border-gray-300 rounded p-2 text-sm" placeholder="user@example.com" />
+                  <label className="block text-sm font-medium text-foreground mb-1">Email Address</label>
+                  <Input type="email" required value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="user@example.com" />
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button type="button" onClick={() => setInviteModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">Cancel</button>
-                  <button type="submit" className="bg-primary text-white px-4 py-2 rounded shadow text-sm font-medium hover:bg-blue-600 transition">Send Invite</button>
+                  <Button type="button" variant="ghost" onClick={() => setInviteModalOpen(false)}>Cancel</Button>
+                  <Button type="submit">Send Invite</Button>
                 </div>
               </form>
             )}
@@ -158,65 +162,69 @@ export function UserManagement() {
         </div>
       )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-            <tr>
-              <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300">Email</th>
-              <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300">Status</th>
-              <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300">Role</th>
-              <th className="px-6 py-4 font-semibold text-sm text-gray-600 dark:text-gray-300 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead>Email</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {users.map(u => (
-              <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-750/50">
-                <td className="px-6 py-4">
+              <TableRow key={u.id}>
+                <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
                       {u.email?.[0]?.toUpperCase() || 'U'}
                     </div>
                     <div>
-                      <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                      <div className="font-medium text-foreground flex items-center gap-2">
                         {u.email || 'Unknown User'}
-                        {u.id === user?.id && <span className="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">You</span>}
+                        {u.id === user?.id && <Badge variant="secondary">You</Badge>}
                       </div>
                     </div>
                   </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    u.status === 'ACTIVE' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                  }`}>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={u.status === 'ACTIVE' ? 'default' : 'secondary'} className={u.status === 'ACTIVE' ? 'bg-status-success hover:bg-status-success/80' : ''}>
                     {u.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <select
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Select
                     value={u.role}
-                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                    onValueChange={(val) => handleRoleChange(u.id, val)}
                     disabled={user.role === 'ADMIN' && u.role === 'SUPER_ADMIN'}
-                    className="border border-gray-300 dark:border-gray-600 rounded p-1.5 bg-white dark:bg-gray-700 text-sm dark:text-white disabled:opacity-50"
                   >
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="SUPER_ADMIN" disabled={user.role !== 'SUPER_ADMIN'}>Super Admin</option>
-                  </select>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USER">User</SelectItem>
+                      <SelectItem value="ADMIN">Admin</SelectItem>
+                      <SelectItem value="SUPER_ADMIN" disabled={user.role !== 'SUPER_ADMIN'}>Super Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => handleRemoveUser(u.id)}
                     disabled={u.id === user.id || (user.role === 'ADMIN' && u.role === 'SUPER_ADMIN')}
-                    className="text-red-500 hover:text-red-700 disabled:opacity-30 disabled:cursor-not-allowed p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors inline-flex"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
                     title="Remove User"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
+                  </Button>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <Modal

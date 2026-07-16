@@ -27,6 +27,9 @@ import { Modal } from "../components/Modal";
 import zxcvbn from "zxcvbn";
 import { apiFetch } from "../lib/apiFetch";
 
+import { Button } from "../components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
+
 export function SecretDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -683,7 +686,10 @@ export function SecretDetail() {
             encryptedItemKeys,
           }),
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || await res.text());
+        }
       } else if (shareType === "email") {
         const res = await apiFetch(`http://localhost:3000/shares/invite`, {
           method: "POST",
@@ -695,7 +701,10 @@ export function SecretDetail() {
             permission: sharePermission,
           }),
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || await res.text());
+        }
       }
 
       await refetch();
@@ -710,6 +719,44 @@ export function SecretDetail() {
     }
   };
 
+  const handleFinalizeInvite = async (invite: any) => {
+    if (!privateKey || !secret) return;
+    setLoading(true);
+    try {
+      let keyToUse = secret.encryptedItemKey;
+      if (user && secret.ownerId !== user.id) {
+        const myShare = secret.shares?.find((s: any) => s.recipientUserId === user.id);
+        if (myShare) keyToUse = myShare.encryptedItemKey;
+      }
+
+      const encryptedItemKeyBuf = Uint8Array.from(atob(keyToUse), c => c.charCodeAt(0)).buffer;
+      const itemKey = await decryptItemKeyWithPrivateKey(encryptedItemKeyBuf, privateKey);
+
+      const publicKeyBuf = Uint8Array.from(atob(invite.ephemeralPublicKey), c => c.charCodeAt(0)).buffer;
+      const cryptoPubKey = await importPublicKey(publicKeyBuf);
+      const newEncryptedItemKey = await encryptItemKeyWithPublicKey(itemKey, cryptoPubKey);
+
+      const res = await apiFetch(`http://localhost:3000/shares/invite/${invite.id}/finalize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          encryptedItemKey: arrayBufferToBase64(newEncryptedItemKey),
+        })
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      await refetch();
+      toast.success('Invite finalized successfully!');
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || 'Failed to finalize invite');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRevoke = async (shareId: string) => {
     try {
       await apiFetch(`http://localhost:3000/shares/${shareId}`, {
@@ -719,6 +766,19 @@ export function SecretDetail() {
       refetch();
     } catch (e) {
       toast.error("Failed to revoke");
+    }
+  };
+
+  const handleRevokeInvite = async (inviteId: string) => {
+    try {
+      await apiFetch(`http://localhost:3000/shares/invite/${inviteId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      refetch();
+      toast.success("Invite revoked");
+    } catch (e) {
+      toast.error("Failed to revoke invite");
     }
   };
 
@@ -882,94 +942,61 @@ export function SecretDetail() {
     secret?.shares?.some(
       (s: any) => s.recipientUserId === user?.id && s.permission === "MODIFY",
     );
+  
+  const hasManagePerm =
+    secret?.ownerId === user?.id ||
+    secret?.shares?.some(
+      (s: any) => s.recipientUserId === user?.id && s.permission === "MANAGE",
+    );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <button
-          onClick={() => navigate("/secrets")}
-          className="flex items-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" /> Back
-        </button>
-        <div className="flex gap-4">
+        <Button variant="ghost" onClick={() => navigate("/secrets")} className="text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back
+        </Button>
+        <div className="flex gap-2">
           {!isEditing ? (
             <>
               {canModify && (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
+                <Button variant="outline" onClick={() => setIsEditing(true)}>
                   Edit
-                </button>
+                </Button>
               )}
               {canModify && (
-                <button
-                  onClick={handleDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2"
-                >
-                  <Trash className="w-4 h-4" /> Delete
-                </button>
+                <Button variant="destructive" onClick={handleDelete}>
+                  <Trash className="w-4 h-4 mr-2" /> Delete
+                </Button>
               )}
             </>
           ) : (
             <>
-              <button
-                onClick={() => setIsEditing(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
-              >
+              <Button variant="outline" onClick={() => setIsEditing(false)}>
                 Cancel
-              </button>
-              <button
-                onClick={handleUpdate}
-                disabled={loading}
-                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" /> Save
-              </button>
+              </Button>
+              <Button onClick={handleUpdate} disabled={loading}>
+                <Save className="w-4 h-4 mr-2" /> {loading ? "Saving..." : "Save"}
+              </Button>
             </>
           )}
         </div>
       </div>
 
-      <div className="flex gap-4 mb-6 border-b border-gray-200 dark:border-gray-700">
-        <button
-          onClick={() => setActiveTab("details")}
-          className={`pb-2 px-1 ${activeTab === "details" ? "border-b-2 border-primary text-primary font-medium" : "text-gray-500 hover:text-gray-700"}`}
-        >
-          Details
-        </button>
-        <button
-          onClick={() => setActiveTab("attachments")}
-          className={`pb-2 px-1 flex items-center gap-2 ${activeTab === "attachments" ? "border-b-2 border-primary text-primary font-medium" : "text-gray-500 hover:text-gray-700"}`}
-        >
-          <Paperclip className="w-4 h-4" /> Attachments
-        </button>
-        {user?.id === secret?.ownerId && (
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`pb-2 px-1 flex items-center gap-2 ${activeTab === "history" ? "border-b-2 border-primary text-primary font-medium" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            <History className="w-4 h-4" /> History
-          </button>
-        )}
-        <button
-          onClick={() => setActiveTab("sharing")}
-          className={`pb-2 px-1 flex items-center gap-2 ${activeTab === "sharing" ? "border-b-2 border-primary text-primary font-medium" : "text-gray-500 hover:text-gray-700"}`}
-        >
-          <Share2 className="w-4 h-4" /> Sharing
-        </button>
-        {user?.id === secret?.ownerId && (
-          <button
-            onClick={() => setActiveTab("access-control")}
-            className={`pb-2 px-1 flex items-center gap-2 ${activeTab === "access-control" ? "border-b-2 border-primary text-primary font-medium" : "text-gray-500 hover:text-gray-700"}`}
-          >
-            <EyeOff className="w-4 h-4" /> Access Control
-          </button>
-        )}
-      </div>
+      <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)} className="w-full flex flex-col">
+        <TabsList className="mb-6 w-full justify-start h-auto p-1 bg-muted/30 rounded-lg overflow-x-auto border border-border flex-row">
+          <TabsTrigger value="details" className="text-sm">Details</TabsTrigger>
+          <TabsTrigger value="attachments" className="text-sm gap-2"><Paperclip className="w-4 h-4" /> Attachments</TabsTrigger>
+          {user?.id === secret?.ownerId && (
+            <TabsTrigger value="history" className="text-sm gap-2"><History className="w-4 h-4" /> History</TabsTrigger>
+          )}
+          <TabsTrigger value="sharing" className="text-sm gap-2"><Share2 className="w-4 h-4" /> Sharing</TabsTrigger>
+          {user?.id === secret?.ownerId && (
+            <TabsTrigger value="access-control" className="text-sm gap-2"><EyeOff className="w-4 h-4" /> Access Control</TabsTrigger>
+          )}
+        </TabsList>
 
-      <div className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+      {['details', 'attachments', 'history'].includes(activeTab) && (
+      <div className="space-y-6 bg-card p-6 md:p-8 rounded-xl border border-border shadow-sm">
         {activeTab === "details" && (
           <>
             <div className="grid grid-cols-2 gap-6">
@@ -1278,15 +1305,17 @@ export function SecretDetail() {
           </div>
         )}
       </div>
-
+      )}
       {activeTab === "sharing" && (
-        <div className="space-y-6">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+        <div className="space-y-6 bg-card p-6 md:p-8 rounded-xl border border-border shadow-sm">
+          <div className="p-0">
             <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">
               Share Access
             </h3>
             {secret?.isPersonal ? (
               <p className="text-red-500">Personal secrets cannot be shared.</p>
+            ) : !hasManagePerm ? (
+              <p className="text-gray-500 dark:text-gray-400">You do not have permission to share this secret.</p>
             ) : (
               <div className="space-y-4">
                 <div className="flex gap-4 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -1380,7 +1409,7 @@ export function SecretDetail() {
             )}
           </div>
 
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+          <div className="mt-6">
             <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">
               Current Access
             </h3>
@@ -1403,12 +1432,14 @@ export function SecretDetail() {
                         Permission: {share.permission}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleRevoke(share.id)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      Revoke
-                    </button>
+                    {hasManagePerm && (
+                      <button
+                        onClick={() => handleRevoke(share.id)}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                      >
+                        Revoke
+                      </button>
+                    )}
                   </li>
                 ))}
                 {secret?.thirdPartyInvites?.map((invite: any) => (
@@ -1428,12 +1459,24 @@ export function SecretDetail() {
                         {invite.permission}
                       </p>
                     </div>
-                    <button
-                      onClick={() => handleRevoke(invite.id)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      Revoke
-                    </button>
+                    {hasManagePerm && (
+                      <div className="flex gap-2">
+                        {invite.status === 'ACCEPTED' && !invite.encryptedItemKey && (
+                          <button
+                            onClick={() => handleFinalizeInvite(invite)}
+                            className="text-primary hover:text-blue-700 text-sm font-medium mr-2"
+                          >
+                            Finalize
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRevokeInvite(invite.id)}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                    )}
                   </li>
                 ))}
                 {secret?.accessRequests?.filter((r: any) => r.status === 'APPROVED' || r.status === 'PENDING').map((req: any) => (
@@ -1468,11 +1511,13 @@ export function SecretDetail() {
         </div>
       )}
 
-      {activeTab === "access-control" && user?.id === secret?.ownerId && (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium mb-4 text-gray-900 dark:text-white">
-            Access Control Settings
-          </h3>
+      {activeTab === "access-control" && (
+        <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+              Access Control Settings
+            </h3>
+          </div>
           {secret?.isPersonal ? (
             <p className="text-red-500">
               Personal secrets cannot use Access Control.
@@ -1601,6 +1646,7 @@ export function SecretDetail() {
         </div>
       )}
 
+      </Tabs>
       <Modal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}

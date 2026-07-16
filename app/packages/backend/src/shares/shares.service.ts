@@ -1,11 +1,17 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SharePermission, InviteStatus } from '@prisma/client';
 import * as crypto from 'crypto';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class SharesService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(SharesService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private mailerService: MailerService
+  ) {}
 
   // We are missing the SharePermissionGuard which should verify the current user has MANAGE permission
   // or is the owner of the secret before allowing them to share it. For now, doing a basic check.
@@ -82,7 +88,27 @@ export class SharesService {
       }
     });
 
-    // In a real app, send an email here with `token`
+    // Send the invite email
+    const inviteUrl = `http://localhost:5173/invite?token=${token}`;
+    try {
+      await this.mailerService.sendMail({
+        to: email,
+        subject: 'You have been invited to access a secret on VowGuard',
+        text: `You have been invited to access a secret securely. Click the link to access it: ${inviteUrl}`,
+        html: `
+          <h3>VowGuard Secret Share</h3>
+          <p>You have been invited to access a secret securely.</p>
+          <p><a href="${inviteUrl}">Click here to access it</a></p>
+          <p>Or paste this link into your browser: <br/>${inviteUrl}</p>
+        `,
+      });
+      this.logger.log(`External share invite sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send invite email to ${email}:`, error);
+      // Fallback to logging for development if SMTP is not configured
+      this.logger.warn(`[MOCK EMAIL] Send this link to ${email}: ${inviteUrl}`);
+    }
+
     return { inviteId: invite.id, rawToken: token };
   }
 
@@ -117,6 +143,45 @@ export class SharesService {
         encryptedItemKey
       }
     });
+  }
+
+  async revokeThirdPartyInvite(id: string, organizationId: string, currentUserId: string) {
+    const invite = await this.prisma.thirdPartyInvite.findUnique({ where: { id }, include: { secret: true } });
+    if (!invite) throw new NotFoundException('Invite not found');
+    if (invite.secret.organizationId !== organizationId) throw new ForbiddenException();
+
+    await this.checkCanManageSecret(invite.secretId, currentUserId, organizationId);
+
+    return this.prisma.thirdPartyInvite.delete({ where: { id } });
+  }
+
+  async getExternalInvite(tokenHash: string) {
+    const invite = await this.prisma.thirdPartyInvite.findUnique({
+      where: { tokenHash },
+      include: {
+        secret: {
+          select: {
+            id: true,
+            name: true,
+            encryptedData: true,
+            iv: true
+          }
+        }
+      }
+    });
+
+    if (!invite) throw new NotFoundException('Invite not found');
+    if (invite.expiresAt < new Date()) throw new BadRequestException('Invite expired');
+
+    return {
+      id: invite.id,
+      status: invite.status,
+      permission: invite.permission,
+      encryptedPrivateKey: invite.encryptedPrivateKey,
+      encryptedItemKey: invite.encryptedItemKey,
+      secret: (invite.status === 'ACCEPTED' && invite.encryptedItemKey) ? invite.secret : null,
+      email: invite.email
+    };
   }
   async shareSecretWithGroup(
     secretId: string,

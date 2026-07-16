@@ -4,6 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Bell, Plus, Clock, Zap, Settings } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { apiFetch } from '../lib/apiFetch';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Badge } from '../components/ui/badge';
 
 export function AlertRules() {
   const { data: rules, refetch, isLoading } = useQuery({
@@ -97,68 +101,64 @@ export function AlertRules() {
             <p className="text-gray-500 dark:text-gray-400">Configure automated notifications for critical audit events.</p>
           </div>
         </div>
-        <button onClick={() => handleOpenModal()} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors">
-          <Plus className="w-4 h-4" />
+        <Button onClick={() => handleOpenModal()}>
+          <Plus className="w-4 h-4 mr-2" />
           New Rule
-        </button>
+        </Button>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead className="bg-gray-50 dark:bg-gray-900">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rule Name</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event Trigger</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timing</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Recipients</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+        <Table>
+          <TableHeader className="bg-muted/50">
+            <TableRow>
+              <TableHead>Rule Name</TableHead>
+              <TableHead>Event Trigger</TableHead>
+              <TableHead>Timing</TableHead>
+              <TableHead>Recipients</TableHead>
+              <TableHead className="text-right">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {(rules || []).map((rule: any) => (
-              <tr key={rule.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">{rule.name}</div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-500 dark:text-gray-400 font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded inline-block">
+              <TableRow key={rule.id}>
+                <TableCell>
+                  <div className="text-sm font-medium text-foreground">{rule.name}</div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="font-mono text-muted-foreground">
                     {rule.eventTypes?.[0] || rule.eventType}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    rule.timing === 'INSTANT' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                  }`}>
-                    {rule.timing === 'INSTANT' ? <Zap className="w-3 h-3 mr-1 mt-0.5" /> : <Clock className="w-3 h-3 mr-1 mt-0.5" />}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={rule.timing === 'INSTANT' ? 'destructive' : 'secondary'} className={rule.timing === 'INSTANT' ? 'bg-orange-500 hover:bg-orange-600 text-white border-0' : ''}>
+                    {rule.timing === 'INSTANT' ? <Zap className="w-3 h-3 mr-1" /> : <Clock className="w-3 h-3 mr-1" />}
                     {rule.timing}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
                   {rule.recipientType === 'ALL_ADMINS' 
                     ? 'All Admins' 
                     : (rule.specificUsers?.length > 0 
                         ? rule.specificUsers.map((su: any) => su.user?.name || su.user?.email).join(', ') 
                         : 'Specific Users (None selected)')}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                </TableCell>
+                <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-3">
                     <button 
                       onClick={() => handleToggle(rule)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${rule.isEnabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${rule.isEnabled ? 'bg-status-success' : 'bg-muted'}`}
                     >
                       <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${rule.isEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
                     </button>
-                    <button onClick={() => handleOpenModal(rule)} className="text-gray-400 hover:text-gray-500 transition-colors">
-                      <Settings className="w-5 h-5" />
-                    </button>
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenModal(rule)}>
+                      <Settings className="w-5 h-5 text-muted-foreground" />
+                    </Button>
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <Modal 
@@ -169,18 +169,17 @@ export function AlertRules() {
       >
         <form onSubmit={handleSaveRule} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rule Name</label>
-            <input 
+            <label className="block text-sm font-medium text-foreground mb-1">Rule Name</label>
+            <Input 
               type="text" 
               name="name"
               defaultValue={editingRule?.name || ''}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               placeholder="e.g. Failed Login Alert"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Trigger</label>
-            <select name="eventType" defaultValue={editingRule?.eventTypes?.[0] || 'LOGIN_FAILED'} className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <label className="block text-sm font-medium text-foreground mb-1">Event Trigger</label>
+            <select name="eventType" defaultValue={editingRule?.eventTypes?.[0] || 'LOGIN_FAILED'} className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <option value="LOGIN_FAILED">Login Failed</option>
               <option value="BACKUP_FAILED">Backup Failed</option>
               <option value="THIRD_PARTY_INVITE_CREATED">External Share Created</option>
@@ -188,20 +187,20 @@ export function AlertRules() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timing</label>
-            <select name="timing" defaultValue={editingRule?.timing || 'INSTANT'} className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <label className="block text-sm font-medium text-foreground mb-1">Timing</label>
+            <select name="timing" defaultValue={editingRule?.timing || 'INSTANT'} className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <option value="INSTANT">Instant (Email/Slack)</option>
               <option value="DAILY_DIGEST">Daily Digest</option>
               <option value="WEEKLY_DIGEST">Weekly Digest</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients</label>
+            <label className="block text-sm font-medium text-foreground mb-1">Recipients</label>
             <select 
               name="recipientType" 
               value={recipientType}
               onChange={(e) => setRecipientType(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             >
               <option value="ALL_ADMINS">All Admins</option>
               <option value="SPECIFIC_USERS">Specific Users</option>
@@ -209,10 +208,10 @@ export function AlertRules() {
           </div>
           {recipientType === 'SPECIFIC_USERS' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Users</label>
-              <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2 bg-white dark:bg-gray-700">
+              <label className="block text-sm font-medium text-foreground mb-1">Select Users</label>
+              <div className="max-h-40 overflow-y-auto border border-border rounded-lg p-2 space-y-2 bg-card">
                 {(users || []).map((u: any) => (
-                  <label key={u.id} className="flex items-center gap-2 cursor-pointer p-1 hover:bg-gray-50 dark:hover:bg-gray-600 rounded">
+                  <label key={u.id} className="flex items-center gap-2 cursor-pointer p-1 hover:bg-muted/50 rounded">
                     <input 
                       type="checkbox" 
                       checked={selectedUsers.includes(u.id)}
@@ -222,26 +221,23 @@ export function AlertRules() {
                       }}
                       className="rounded text-primary focus:ring-primary w-4 h-4"
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{u.name || u.email}</span>
+                    <span className="text-sm text-foreground">{u.name || u.email}</span>
                   </label>
                 ))}
               </div>
             </div>
           )}
-          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <button
+          <div className="flex justify-end gap-3 pt-6 border-t border-border">
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => setIsModalOpen(false)}
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
+            </Button>
+            <Button type="submit">
               Save Rule
-            </button>
+            </Button>
           </div>
         </form>
       </Modal>

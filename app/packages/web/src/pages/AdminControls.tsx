@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { Shield, ToggleLeft, ToggleRight, X, UserPlus, Trash2 } from 'lucide-react';
 import { useSessionStore } from '../store/session';
 import { apiFetch } from '../lib/apiFetch';
+import { Button } from '../components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Badge } from '../components/ui/badge';
 
 interface Exemption {
   id: string;
@@ -124,10 +127,10 @@ export function AdminControls() {
             <div key={control.id} className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
                     {control.action}
                     {control.isEnabled && (
-                      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 rounded-full">Blocked</span>
+                      <Badge variant="destructive">Blocked</Badge>
                     )}
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{control.description}</p>
@@ -177,37 +180,36 @@ export function AdminControls() {
       {/* Exemption Modal */}
       {exemptionModal?.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+          <div className="bg-card rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 border border-border">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Add Exemption</h2>
-              <button onClick={() => setExemptionModal(null)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+              <h2 className="text-lg font-semibold text-foreground">Add Exemption</h2>
+              <Button variant="ghost" size="icon" onClick={() => setExemptionModal(null)}><X className="w-5 h-5" /></Button>
             </div>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               Grant a specific user permission to bypass: <strong>{exemptionModal.actionLabel}</strong>
             </p>
             {availableForExemption.length === 0 ? (
-              <p className="text-sm text-center text-gray-400 py-4 bg-gray-50 dark:bg-gray-700 rounded-lg">All org members already have exemptions.</p>
+              <p className="text-sm text-center text-muted-foreground py-4 bg-muted/50 rounded-lg border border-border">All org members already have exemptions.</p>
             ) : (
-              <select
-                value={selectedUserId}
-                onChange={e => setSelectedUserId(e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-primary outline-none"
-              >
-                <option value="">— Select a member —</option>
-                {availableForExemption.map((u: any) => (
-                  <option key={u.id} value={u.id}>{u.email} ({u.role})</option>
-                ))}
-              </select>
+              <Select value={selectedUserId} onValueChange={(val: any) => setSelectedUserId(val)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a member..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableForExemption.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>{u.email} ({u.role})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
             <div className="flex gap-3 mt-5 justify-end">
-              <button onClick={() => setExemptionModal(null)} className="px-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50">Cancel</button>
-              <button
+              <Button variant="outline" onClick={() => setExemptionModal(null)}>Cancel</Button>
+              <Button
                 onClick={handleAddExemption}
                 disabled={!selectedUserId || savingExemption}
-                className="px-4 py-2 text-sm rounded-lg bg-primary text-white hover:bg-blue-700 disabled:opacity-50"
               >
                 {savingExemption ? 'Adding...' : 'Grant Exemption'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

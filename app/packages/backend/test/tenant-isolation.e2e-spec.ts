@@ -13,6 +13,14 @@ describe('Tenant Isolation (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
+
+    // Ignore BullMQ Redis connection closed error during teardown
+    process.on('uncaughtException', (err: any) => {
+      if (err.message && err.message.includes('Connection is closed.')) {
+        return;
+      }
+      console.error(err);
+    });
   });
 
   afterAll(async () => {

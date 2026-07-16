@@ -14,6 +14,11 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/apiFetch";
 import toast from "react-hot-toast";
 
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Checkbox } from "../components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+
 export function AddSecret() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -63,13 +68,10 @@ export function AddSecret() {
 
   const handleChange = (
     e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      HTMLInputElement | HTMLTextAreaElement
     >,
   ) => {
-    const value =
-      e.target.type === "checkbox"
-        ? (e.target as HTMLInputElement).checked
-        : e.target.value;
+    const value = e.target.type === "checkbox" ? (e.target as HTMLInputElement).checked : e.target.value;
     setFormData({ ...formData, [e.target.name]: value });
   };
 
@@ -99,18 +101,13 @@ export function AddSecret() {
       return;
     }
 
-    // Password Policy Validation
     if (activePolicy && formData.password) {
       if (formData.password.length < activePolicy.minLength) {
-        toast.error(
-          `Password must be at least ${activePolicy.minLength} characters.`,
-        );
+        toast.error(`Password must be at least ${activePolicy.minLength} characters.`);
         return;
       }
       if (formData.password.length > activePolicy.maxLength) {
-        toast.error(
-          `Password must be no more than ${activePolicy.maxLength} characters.`,
-        );
+        toast.error(`Password must be no more than ${activePolicy.maxLength} characters.`);
         return;
       }
       if (activePolicy.requireUppercase && !/[A-Z]/.test(formData.password)) {
@@ -125,10 +122,7 @@ export function AddSecret() {
         toast.error("Password must contain a number.");
         return;
       }
-      if (
-        activePolicy.requireSymbols &&
-        !/[^A-Za-z0-9]/.test(formData.password)
-      ) {
+      if (activePolicy.requireSymbols && !/[^A-Za-z0-9]/.test(formData.password)) {
         toast.error("Password must contain a symbol.");
         return;
       }
@@ -137,27 +131,15 @@ export function AddSecret() {
     setLoading(true);
 
     try {
-      // 1. Generate unique ItemKey
       const itemKey = await generateItemKey();
-
-      // 2. Encrypt the payload (username, password, notes)
       const payload = {
         username: formData.username,
         password: formData.password,
         notes: formData.notes,
       };
-      const { encryptedData, iv } = await encryptSecretPayload(
-        payload,
-        itemKey,
-      );
+      const { encryptedData, iv } = await encryptSecretPayload(payload, itemKey);
+      const encryptedItemKey = await encryptItemKeyWithPublicKey(itemKey, publicKey);
 
-      // 3. Encrypt the ItemKey with the User's Public Key
-      const encryptedItemKey = await encryptItemKeyWithPublicKey(
-        itemKey,
-        publicKey,
-      );
-
-      // Compute assessment flags
       const zResult = zxcvbn(formData.password || "");
       const isWeak = zResult.score < 3;
       const isDictionaryWord = zResult.sequence.some(
@@ -168,12 +150,9 @@ export function AddSecret() {
       );
       const containsUsername =
         formData.username && formData.password
-          ? formData.password
-              .toLowerCase()
-              .includes(formData.username.toLowerCase())
+          ? formData.password.toLowerCase().includes(formData.username.toLowerCase())
           : false;
 
-      // 4. Send to server
       const res = await apiFetch("http://localhost:3000/secrets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -208,143 +187,142 @@ export function AddSecret() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+    <div className="space-y-8 max-w-4xl mx-auto">
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" onClick={() => navigate(-1)} className="rounded-full">
+          <ArrowLeft className="w-5 h-5 text-muted-foreground" />
+        </Button>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
           Add Secret
         </h1>
       </div>
 
-      <div className="mb-8">
-        <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+      <div className="bg-muted/30 p-4 rounded-lg border border-border">
+        <h2 className="text-sm font-medium text-foreground mb-3 tracking-tight">
           Quick Add from Catalog
         </h2>
         <div className="flex flex-wrap gap-2">
           {(siteCatalog || []).map((site: any) => (
-            <button
+            <Button
               key={site.id || site.name}
               type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => handleCatalogSelect(site)}
-              className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-700 transition-colors"
             >
               {site.name}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700"
+        className="space-y-6 bg-card p-6 md:p-8 rounded-xl shadow-sm border border-border"
       >
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
               Template
             </label>
-            <select
-              name="templateType"
-              value={formData.templateType}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            >
-              <option value="WEBSITE">Website / Login</option>
-              <option value="SERVER">Server / SSH</option>
-              <option value="UNIX">Unix Account</option>
-              <option value="WINDOWS">Windows Account</option>
-              <option value="LICENSE">License Key</option>
-              <option value="CUSTOM">Custom</option>
-            </select>
+            <Select value={formData.templateType} onValueChange={(val: any) => setFormData({ ...formData, templateType: val })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="WEBSITE">Website / Login</SelectItem>
+                <SelectItem value="SERVER">Server / SSH</SelectItem>
+                <SelectItem value="UNIX">Unix Account</SelectItem>
+                <SelectItem value="WINDOWS">Windows Account</SelectItem>
+                <SelectItem value="LICENSE">License Key</SelectItem>
+                <SelectItem value="CUSTOM">Custom</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
               Name
             </label>
-            <input
+            <Input
               name="name"
               required
               value={formData.name}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="e.g. My Database"
             />
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">
             Domain / URL
           </label>
-          <input
+          <Input
             name="domain"
             value={formData.domain}
             onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            placeholder="https://example.com"
           />
         </div>
 
-        <hr className="border-gray-200 dark:border-gray-700" />
+        <hr className="border-border" />
 
-        <div className="grid grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
               Username
             </label>
-            <input
+            <Input
               name="username"
               value={formData.username}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              placeholder="admin"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 flex justify-between">
-              <span>Password</span>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <label className="text-sm font-medium text-foreground">Password</label>
               <button
                 type="button"
                 onClick={() => setShowGenerator(!showGenerator)}
-                className="text-primary hover:text-blue-700"
+                className="text-sm text-primary hover:text-blue-700 font-medium transition-colors"
               >
                 Generator
               </button>
-            </label>
+            </div>
             <div className="relative">
-              <input
+              <Input
                 name="password"
                 type={showPassword ? "text" : "password"}
                 value={formData.password}
                 onChange={handleChange}
-                className={`mt-1 block w-full rounded-md shadow-sm p-2 pr-10 bg-gray-50 dark:bg-gray-700 dark:text-white border ${formData.password ? (passwordScore < 3 ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-green-300 focus:border-green-500 focus:ring-green-500") : "border-gray-300 dark:border-gray-600"}`}
+                placeholder="••••••••"
+                className={`pr-10 ${formData.password ? (passwordScore < 3 ? "border-status-danger focus-visible:ring-status-danger" : "border-status-success focus-visible:ring-status-success") : ""}`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute bottom-2 right-3 text-gray-400 hover:text-gray-600"
+                className="absolute top-1/2 -translate-y-1/2 right-3 text-muted-foreground hover:text-foreground transition-colors"
               >
                 {showPassword ? (
-                  <EyeOff className="w-5 h-5" />
+                  <EyeOff className="w-4 h-4" />
                 ) : (
-                  <Eye className="w-5 h-5" />
+                  <Eye className="w-4 h-4" />
                 )}
               </button>
             </div>
             {formData.password && (
-              <div className="flex gap-1 mt-2 h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+              <div className="flex gap-1 mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
                 {[...Array(4)].map((_, i) => (
                   <div
                     key={i}
-                    className={`h-full flex-1 ${
+                    className={`h-full flex-1 transition-all ${
                       i < passwordScore
                         ? passwordScore < 3
-                          ? "bg-red-500"
+                          ? "bg-status-danger"
                           : passwordScore === 3
-                            ? "bg-yellow-500"
-                            : "bg-green-500"
+                            ? "bg-status-warning"
+                            : "bg-status-success"
                         : "bg-transparent"
                     }`}
                   />
@@ -355,13 +333,15 @@ export function AddSecret() {
         </div>
 
         {showGenerator && (
-          <PasswordGenerator
-            onSelect={(pwd) => setFormData({ ...formData, password: pwd })}
-          />
+          <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+            <PasswordGenerator
+              onSelect={(pwd) => setFormData({ ...formData, password: pwd })}
+            />
+          </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">
             Secure Notes
           </label>
           <textarea
@@ -369,44 +349,42 @@ export function AddSecret() {
             rows={4}
             value={formData.notes}
             onChange={handleChange}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+            placeholder="Add any additional context or instructions here..."
           />
         </div>
 
-        <div className="flex items-center gap-2 mt-4">
-          <input
-            type="checkbox"
+        <div className="flex items-center space-x-2 bg-muted/30 p-4 rounded-md border border-border">
+          <Checkbox
             id="isPersonal"
             name="isPersonal"
             checked={formData.isPersonal}
-            onChange={handleChange}
-            className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+            onCheckedChange={(c) => setFormData({ ...formData, isPersonal: !!c })}
           />
           <label
             htmlFor="isPersonal"
-            className="text-sm font-medium text-gray-700 dark:text-gray-300"
+            className="text-sm font-medium leading-none cursor-pointer"
           >
-            Mark as Personal (Private, cannot be shared or added to shared
-            folders)
+            Mark as Personal <span className="text-muted-foreground font-normal">(Private, cannot be shared or added to shared folders)</span>
           </label>
         </div>
 
-        <div className="flex justify-end gap-4">
-          <button
+        <div className="flex justify-end gap-3 pt-4">
+          <Button
             type="button"
+            variant="outline"
             onClick={() => navigate("/secrets")}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
             disabled={loading || !publicKey}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            className="flex items-center gap-2"
           >
             <Shield className="w-4 h-4" />
             {loading ? "Encrypting..." : "Save Secret"}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

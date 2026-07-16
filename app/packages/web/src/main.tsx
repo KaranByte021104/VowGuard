@@ -23,6 +23,8 @@ import { AlertRules } from './pages/AlertRules';
 import { UserManagement } from './pages/UserManagement';
 import { SecuritySettings } from './pages/SecuritySettings';
 import { Profile } from './pages/Profile';
+import { AcceptInvite } from './pages/AcceptInvite';
+import { ViewExternalSecret } from './pages/ViewExternalSecret';
 import './index.css';
 import App from './App.tsx';
 
@@ -77,6 +79,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
           <Route path="/sso-dispatch" element={<SsoDispatch />} />
+          <Route path="/invite" element={<AcceptInvite />} />
+          <Route path="/external-secret" element={<ViewExternalSecret />} />
           <Route path="/" element={<AuthGuard><App /></AuthGuard>}>
             <Route index element={<Dashboard />} />
             <Route path="secrets" element={<SecretsList />} />

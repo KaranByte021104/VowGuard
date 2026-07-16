@@ -23,6 +23,9 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { Button } from "../components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 
 const COLORS = [
   "#0ea5e9",
@@ -32,8 +35,6 @@ const COLORS = [
   "#f97316",
   "#8b5cf6",
 ];
-
-
 
 export function Dashboard() {
   const { user } = useSessionStore();
@@ -56,7 +57,7 @@ export function Dashboard() {
 
   if (!stats)
     return (
-      <div className="p-8 text-center text-gray-500">Loading dashboard...</div>
+      <div className="p-8 text-center text-muted-foreground">Loading dashboard...</div>
     );
 
   const currentStats = activeTab === "personal" ? stats.personal : stats.team;
@@ -72,14 +73,14 @@ export function Dashboard() {
   const categories = currentStats?.categories || {};
 
   const overviewData = [
-    { name: "Owned", value: stats.overview.owned, fill: "#22c55e" },
-    { name: "Shared by me", value: stats.overview.sharedByMe, fill: "#eab308" },
+    { name: "Owned", value: stats.overview.owned, fill: "var(--status-success)" },
+    { name: "Shared by me", value: stats.overview.sharedByMe, fill: "var(--status-warning)" },
     {
       name: "Shared with me",
       value: stats.overview.sharedWithMe,
-      fill: "#ef4444",
+      fill: "var(--status-danger)",
     },
-    { name: "Unshared", value: stats.overview.unshared, fill: "#0ea5e9" },
+    { name: "Unshared", value: stats.overview.unshared, fill: "var(--color-primary)" },
     { name: "Personal", value: stats.overview.personal, fill: "#f97316" },
   ];
 
@@ -94,121 +95,97 @@ export function Dashboard() {
     { name: "Remaining", value: 100 - assessment.score },
   ];
 
-  let scoreColor = "#22c55e"; // default green
+  let scoreColor = "var(--status-success)";
   if (assessment.score < 50) {
-    scoreColor = "#ef4444"; // red
+    scoreColor = "var(--status-danger)";
   } else if (assessment.score < 80) {
-    scoreColor = "#f59e0b"; // amber
+    scoreColor = "var(--status-warning)";
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-3xl font-bold tracking-tight text-foreground">
             Overview
           </h2>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             Welcome back. Here is the activity summary for your account and
             organization.
           </p>
         </div>
 
         {user?.role !== "USER" && (
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleExport("csv")}
-              className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              <Download className="w-4 h-4" />
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => handleExport("csv")}>
+              <Download className="w-4 h-4 mr-2" />
               Export CSV
-            </button>
-            <button
-              onClick={() => handleExport("pdf")}
-              className="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-lg text-sm font-medium"
-            >
-              <Download className="w-4 h-4" />
+            </Button>
+            <Button onClick={() => handleExport("pdf")}>
+              <Download className="w-4 h-4 mr-2" />
               Export PDF
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
-      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          <button
-            onClick={() => setActiveTab("personal")}
-            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "personal"
-                ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
-            }`}
-          >
-            My Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab("team")}
-            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "team"
-                ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
-            }`}
-          >
-            Team Dashboard
-          </button>
-        </nav>
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="personal">My Dashboard</TabsTrigger>
+          <TabsTrigger value="team">Team Dashboard</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Top Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-muted-foreground text-sm font-medium tracking-tight">
               Passwords
             </h3>
-            <Key className="w-5 h-5 text-blue-500" />
+            <Key className="w-4 h-4 text-primary" />
           </div>
-          <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+          <div className="text-3xl font-bold">
             {currentStats?.total || 0}
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+        <div className="bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-muted-foreground text-sm font-medium tracking-tight">
               Folders
             </h3>
-            <Folder className="w-5 h-5 text-green-500" />
+            <Folder className="w-4 h-4 text-status-success" />
           </div>
-          <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+          <div className="text-3xl font-bold">
             {stats.folders?.total || 0}
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+        <div className="bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-muted-foreground text-sm font-medium tracking-tight">
               {activeTab === "team" ? "Users" : "File Attachments"}
             </h3>
             {activeTab === "team" ? (
-              <Users className="w-5 h-5 text-amber-500" />
+              <Users className="w-4 h-4 text-status-warning" />
             ) : (
-              <Share2 className="w-5 h-5 text-amber-500" />
+              <Share2 className="w-4 h-4 text-status-warning" />
             )}
           </div>
-          <div className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+          <div className="text-3xl font-bold">
             {activeTab === "team" ? stats.userAccess?.total : 0}
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+        <div className="bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-muted-foreground text-sm font-medium tracking-tight">
               SSO Apps
             </h3>
-            <Cloud className="w-5 h-5 text-red-500" />
+            <Cloud className="w-4 h-4 text-status-danger" />
           </div>
-          <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+          <div className="text-3xl font-bold">
             {stats.ssoApps?.total || 0}
           </div>
         </div>
@@ -216,30 +193,32 @@ export function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Overview Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold mb-4 text-gray-900 dark:text-white">
+        <div className="bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
+          <h3 className="text-lg font-semibold tracking-tight mb-4">
             Overview of All Passwords
           </h3>
-          <div className="h-64">
+          <div className="h-[250px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={overviewData}
-                margin={{ top: 20, right: 0, left: -20, bottom: 25 }}
+                margin={{ top: 10, right: 0, left: -20, bottom: 25 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#e5e7eb"
+                  stroke="var(--color-border)"
                 />
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 10 }}
+                  tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
                   interval={0}
                   angle={-45}
                   textAnchor="end"
+                  tickLine={false}
+                  axisLine={false}
                 />
-                <YAxis />
-                <RechartsTooltip cursor={{ fill: "transparent" }} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} tickLine={false} axisLine={false} />
+                <RechartsTooltip cursor={{ fill: "var(--color-muted)", opacity: 0.2 }} contentStyle={{ borderRadius: "8px", border: "1px solid var(--color-border)" }} />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   {overviewData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.fill} />
@@ -251,96 +230,96 @@ export function Dashboard() {
         </div>
 
         {/* Assessment Score */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+        <div className="lg:col-span-2 bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
+          <div className="flex items-center gap-2 mb-6">
+            <h3 className="text-lg font-semibold tracking-tight">
               Password Assessment Score
             </h3>
             <div title="This score represents the overall strength and security of your passwords based on various criteria.">
-              <Info className="w-4 h-4 text-blue-500 cursor-help" />
+              <Info className="w-4 h-4 text-muted-foreground hover:text-foreground cursor-help transition-colors" />
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center justify-around h-64">
+          <div className="flex flex-col md:flex-row items-center justify-around h-[250px]">
             {/* Main Score Pie */}
             <div className="relative w-48 h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieData}
-                    innerRadius={60}
-                    outerRadius={80}
+                    innerRadius={65}
+                    outerRadius={85}
                     startAngle={90}
                     endAngle={-270}
                     dataKey="value"
                     stroke="none"
                   >
                     <Cell fill={scoreColor} />
-                    <Cell fill="#f3f4f6" />
+                    <Cell fill="var(--color-muted)" />
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                <span className="text-4xl font-bold tracking-tighter">
                   {assessment.score}%
                 </span>
               </div>
-              <div className="absolute bottom-0 w-full text-center text-xs text-gray-500 flex justify-center gap-2">
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-red-500"></div>Poor
+              <div className="absolute -bottom-2 w-full flex justify-center gap-4 text-xs font-medium text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-status-danger"></div>Poor
                 </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-amber-500"></div>Fair
+                <span className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-status-warning"></div>Fair
                 </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500"></div>Good
+                <span className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-status-success"></div>Good
                 </span>
               </div>
             </div>
 
             {/* Assessment Circles */}
-            <div className="grid grid-cols-3 gap-8 text-center mt-6 md:mt-0">
+            <div className="grid grid-cols-3 gap-x-8 gap-y-4 text-center mt-6 md:mt-0">
               <AssessmentCircle
                 label="Weak"
                 count={assessment.weak}
                 total={currentStats.total}
-                color="text-red-500"
-                borderColor="border-red-500"
+                color="text-status-danger"
+                borderColor="border-status-danger"
               />
               <AssessmentCircle
                 label="Reused"
                 count={assessment.reused}
                 total={currentStats.total}
-                color="text-amber-500"
-                borderColor="border-amber-500"
+                color="text-status-warning"
+                borderColor="border-status-warning"
               />
               <AssessmentCircle
                 label="Contains username"
                 count={assessment.containsUsername}
                 total={currentStats.total}
-                color="text-blue-500"
-                borderColor="border-blue-500"
+                color="text-primary"
+                borderColor="border-primary"
               />
               <AssessmentCircle
                 label="Old"
                 count={assessment.old}
                 total={currentStats.total}
-                color="text-red-500"
-                borderColor="border-red-500"
+                color="text-status-danger"
+                borderColor="border-status-danger"
               />
               <AssessmentCircle
                 label="Dictionary words"
                 count={assessment.dictionary}
                 total={currentStats.total}
-                color="text-green-500"
-                borderColor="border-green-500"
+                color="text-status-success"
+                borderColor="border-status-success"
               />
               <AssessmentCircle
                 label="Recycled"
                 count={assessment.recycled}
                 total={currentStats.total}
-                color="text-green-500"
-                borderColor="border-green-500"
+                color="text-status-success"
+                borderColor="border-status-success"
               />
             </div>
           </div>
@@ -349,11 +328,11 @@ export function Dashboard() {
 
       {/* Categories */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-          <h3 className="text-sm font-semibold mb-4 text-gray-900 dark:text-white">
+        <div className="bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
+          <h3 className="text-lg font-semibold tracking-tight mb-4">
             Categories Distribution
           </h3>
-          <div className="h-48 relative">
+          <div className="h-[200px] relative">
             {categoryData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -363,20 +342,22 @@ export function Dashboard() {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={60}
+                    outerRadius={65}
+                    innerRadius={45}
                     fill="#8884d8"
-                    labelLine={false}
+                    stroke="var(--color-card)"
+                    strokeWidth={2}
                   >
                     {categoryData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <RechartsTooltip />
-                  <Legend verticalAlign="bottom" height={36} />
+                  <RechartsTooltip contentStyle={{ borderRadius: "8px", border: "1px solid var(--color-border)" }} />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: "12px" }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+              <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                 No data available
               </div>
             )}
@@ -384,37 +365,37 @@ export function Dashboard() {
         </div>
 
         {/* Password Actions */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div className="lg:col-span-2 bg-card text-card-foreground p-6 rounded-lg shadow-sm border border-border">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold tracking-tight">
               Password Actions
             </h3>
-            <select
-              className="text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600"
-              value={actionRange}
-              onChange={(e) => setActionRange(e.target.value)}
-            >
-              <option>Today</option>
-              <option>Yesterday</option>
-              <option>Last 7 Days</option>
-              <option>Last Month</option>
-            </select>
+            <Select value={actionRange} onValueChange={(val: any) => setActionRange(val)}>
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Select range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Today">Today</SelectItem>
+                <SelectItem value="Yesterday">Yesterday</SelectItem>
+                <SelectItem value="Last 7 Days">Last 7 Days</SelectItem>
+                <SelectItem value="Last Month">Last Month</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="h-48">
+          <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
-              {/* Note: I need to import LineChart, Line from recharts too */}
               <BarChart
                 data={stats.passwordActions?.[actionRange] || []}
-                margin={{ top: 5, right: 0, left: -20, bottom: 5 }}
+                margin={{ top: 10, right: 0, left: -20, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <RechartsTooltip />
-                <Legend />
-                <Bar dataKey="accessed" stackId="a" fill="#3b82f6" />
-                <Bar dataKey="added" stackId="a" fill="#22c55e" />
-                <Bar dataKey="modified" stackId="a" fill="#eab308" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }} tickLine={false} axisLine={false} />
+                <RechartsTooltip cursor={{ fill: "var(--color-muted)", opacity: 0.2 }} contentStyle={{ borderRadius: "8px", border: "1px solid var(--color-border)" }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
+                <Bar dataKey="accessed" stackId="a" fill="var(--color-primary)" radius={[0, 0, 4, 4]} />
+                <Bar dataKey="added" stackId="a" fill="var(--status-success)" />
+                <Bar dataKey="modified" stackId="a" fill="var(--status-warning)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -427,25 +408,23 @@ export function Dashboard() {
 function AssessmentCircle({
   label,
   count,
-  total,
   color,
   borderColor,
 }: {
   label: string;
   count: number;
-  total: number;
+  total?: number;
   color: string;
   borderColor: string;
 }) {
   return (
-    <div className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity">
+    <div className="flex flex-col items-center cursor-pointer group">
       <div
-        className={`w-16 h-16 rounded-full border-4 ${borderColor} flex flex-col items-center justify-center mb-2 bg-white dark:bg-gray-800`}
+        className={`w-14 h-14 rounded-full border-[3px] ${borderColor} flex flex-col items-center justify-center mb-2 bg-card group-hover:scale-105 transition-transform shadow-sm`}
       >
-        <span className={`text-xl font-bold ${color}`}>{count}</span>
-        <span className="text-[10px] text-gray-500">of {total}</span>
+        <span className={`text-lg font-bold ${color}`}>{count}</span>
       </div>
-      <span className="text-xs text-gray-600 dark:text-gray-400">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">{label}</span>
     </div>
   );
 }

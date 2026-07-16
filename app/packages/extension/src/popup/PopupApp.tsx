@@ -170,29 +170,29 @@ export function PopupApp() {
 
   if (session?.isUnlocked) {
     return (
-      <div className="flex flex-col h-full bg-gray-50 text-gray-900">
-        <div className="bg-blue-600 text-white p-4 flex items-center justify-between">
+      <div className="flex flex-col h-full bg-background text-foreground">
+        <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
-            <h1 className="font-bold">VowGuard</h1>
+            <h1 className="font-bold tracking-tight">VowGuard</h1>
           </div>
           <button onClick={() => {
             chrome.runtime.sendMessage({ type: 'LOCK' }, () => checkSession());
-          }} title="Lock Vault">
+          }} title="Lock Vault" className="hover:opacity-80 transition-opacity">
             <Lock className="w-4 h-4" />
           </button>
         </div>
         <div className="p-6 flex-1 flex flex-col items-center justify-center text-center">
-          <Unlock className="w-12 h-12 text-green-500 mb-4" />
+          <Unlock className="w-12 h-12 text-status-success mb-4" />
           <h2 className="text-lg font-semibold mb-1">Vault Unlocked</h2>
-          <p className="text-sm text-gray-500 mb-6">{session.user?.email}</p>
+          <p className="text-sm text-muted-foreground mb-6">{session.user?.email}</p>
           
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             Autofill is active for matching domains.
           </p>
         </div>
-        <div className="p-4 border-t border-gray-200 bg-white">
-          <a href="http://localhost:5173" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 text-sm text-primary hover:underline">
+        <div className="p-4 border-t border-border bg-card">
+          <a href="http://localhost:5173" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 text-sm font-medium text-primary hover:underline">
             Open Web Vault <ExternalLink className="w-4 h-4" />
           </a>
         </div>
@@ -201,25 +201,25 @@ export function PopupApp() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 text-gray-900">
-      <div className="bg-blue-600 text-white p-4 flex items-center gap-2">
+    <div className="flex flex-col h-full bg-background text-foreground">
+      <div className="bg-primary text-primary-foreground p-4 flex items-center gap-2 shadow-sm">
         <Shield className="w-5 h-5" />
-        <h1 className="font-bold">VowGuard</h1>
+        <h1 className="font-bold tracking-tight">VowGuard</h1>
       </div>
       <div className="p-6">
-        <h2 className="text-xl font-bold mb-4 text-center">Unlock Extension</h2>
+        <h2 className="text-xl font-bold mb-6 text-center">Unlock Extension</h2>
         
         {mfaRequired ? (
           <form onSubmit={handleMfaSubmit} className="space-y-4">
-            {error && <div className="bg-red-50 text-red-600 p-2 rounded text-sm text-center">{error}</div>}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Authenticator Code</label>
+            {error && <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm text-center font-medium">{error}</div>}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium">Authenticator Code</label>
               <input 
                 type="text" 
                 required 
                 value={mfaToken}
                 onChange={e => setMfaToken(e.target.value)}
-                className="w-full border border-gray-300 rounded p-2 text-sm" 
+                className="w-full border border-input bg-background rounded-md p-2 text-sm focus:ring-2 focus:ring-ring focus:border-ring transition-colors" 
                 placeholder="6-digit code"
                 maxLength={6}
               />
@@ -227,7 +227,7 @@ export function PopupApp() {
             <button 
               type="submit" 
               disabled={isUnlocking}
-              className="w-full bg-blue-600 text-white rounded p-2 text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="w-full bg-primary text-primary-foreground rounded-md p-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {isUnlocking ? unlockStatus : 'Verify & Unlock'}
             </button>
@@ -238,58 +238,62 @@ export function PopupApp() {
                 setMfaToken('');
                 setTempToken('');
               }}
-              className="w-full bg-gray-200 text-gray-700 rounded p-2 text-sm font-medium hover:bg-gray-300 transition-colors"
+              className="w-full bg-secondary text-secondary-foreground rounded-md p-2 text-sm font-medium hover:opacity-90 transition-opacity"
             >
               Back to Login
             </button>
           </form>
         ) : (
           <form onSubmit={handleFullLogin} className="space-y-4">
-            {error && <div className="bg-red-50 text-red-600 p-2 rounded text-sm text-center">{error}</div>}
+            {error && <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm text-center font-medium">{error}</div>}
             
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium">Email</label>
               <input 
                 type="email" 
                 required 
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full border border-gray-300 rounded p-2 text-sm" 
+                className="w-full border border-input bg-background rounded-md p-2 text-sm focus:ring-2 focus:ring-ring focus:border-ring transition-colors" 
               />
             </div>
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Login Password</label>
-              <input 
-                type={showLoginPassword ? "text" : "password"} 
-                required 
-                value={loginPassword}
-                onChange={e => setLoginPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded p-2 text-sm pr-10" 
-                placeholder="Used to sign in"
-              />
-              <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute bottom-2 right-3 flex items-center text-gray-400 hover:text-gray-600">
-                {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium">Login Password</label>
+              <div className="relative">
+                <input 
+                  type={showLoginPassword ? "text" : "password"} 
+                  required 
+                  value={loginPassword}
+                  onChange={e => setLoginPassword(e.target.value)}
+                  className="w-full border border-input bg-background rounded-md p-2 text-sm pr-10 focus:ring-2 focus:ring-ring focus:border-ring transition-colors" 
+                  placeholder="Used to sign in"
+                />
+                <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground">
+                  {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Master Password</label>
-              <input 
-                type={showMasterPassword ? "text" : "password"} 
-                required 
-                value={masterPassword}
-                onChange={e => setMasterPassword(e.target.value)}
-                className="w-full border border-gray-300 rounded p-2 text-sm pr-10" 
-                placeholder="Used to decrypt your vault"
-              />
-              <button type="button" onClick={() => setShowMasterPassword(!showMasterPassword)} className="absolute bottom-2 right-3 flex items-center text-gray-400 hover:text-gray-600">
-                {showMasterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium">Master Password</label>
+              <div className="relative">
+                <input 
+                  type={showMasterPassword ? "text" : "password"} 
+                  required 
+                  value={masterPassword}
+                  onChange={e => setMasterPassword(e.target.value)}
+                  className="w-full border border-input bg-background rounded-md p-2 text-sm pr-10 focus:ring-2 focus:ring-ring focus:border-ring transition-colors" 
+                  placeholder="Used to decrypt your vault"
+                />
+                <button type="button" onClick={() => setShowMasterPassword(!showMasterPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground">
+                  {showMasterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             
             <button 
               type="submit" 
               disabled={isUnlocking}
-              className="w-full bg-blue-600 text-white rounded p-2 text-sm font-medium hover:bg-blue-700 transition-colors"
+              className="w-full bg-primary text-primary-foreground rounded-md p-2 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 mt-2"
             >
               {isUnlocking ? unlockStatus : 'Unlock Vault'}
             </button>

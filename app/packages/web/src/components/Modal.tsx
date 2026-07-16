@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 
 interface ModalProps {
   isOpen: boolean;
@@ -29,6 +32,10 @@ export function Modal({
 }: ModalProps) {
   const [inputValue, setInputValue] = useState('');
 
+  useEffect(() => {
+    if (isOpen) setInputValue('');
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleConfirm = () => {
@@ -42,54 +49,48 @@ export function Modal({
     onClose();
   };
 
-  const colorClasses = confirmColor === 'red' 
-    ? 'bg-red-600 hover:bg-red-700' 
-    : 'bg-primary hover:bg-blue-700';
-
-  const containerClasses = position === 'right'
-    ? 'fixed inset-y-0 right-0 z-[100] flex w-full max-w-md flex-col bg-white dark:bg-gray-800 shadow-2xl animate-in slide-in-from-right'
-    : 'bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-full max-w-sm animate-in zoom-in-95';
-
-  const wrapperClasses = position === 'right'
-    ? 'fixed inset-0 z-[100] flex justify-end bg-black/50 backdrop-blur-sm transition-opacity'
-    : 'fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity';
+  const contentClasses = position === 'right'
+    ? '!fixed !right-0 !left-auto !top-0 !translate-x-0 !translate-y-0 !h-full w-full !max-w-md !rounded-none !border-l border-border bg-background p-6 shadow-2xl flex flex-col data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-right-full data-[state=closed]:slide-out-to-right-full'
+    : 'sm:max-w-md flex flex-col';
 
   return (
-    <div className={wrapperClasses} onClick={handleClose}>
-      <div className={containerClasses} onClick={e => e.stopPropagation()}>
-        <div className={position === 'right' ? 'p-6 flex-grow overflow-y-auto' : ''}>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
-        {message && <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{message}</p>}
-        
-        {mode === 'prompt' && (
-          <input
-            type="text"
-            className="w-full border border-gray-300 dark:border-gray-600 rounded-md p-2 mb-4 bg-gray-50 dark:bg-gray-700 dark:text-white"
-            placeholder={promptPlaceholder}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleConfirm();
-              if (e.key === 'Escape') handleClose();
-            }}
-            autoFocus
-          />
-        )}
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className={contentClasses}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {message && <DialogDescription className="mt-1">{message}</DialogDescription>}
+        </DialogHeader>
 
-        {children}
+        <div className={position === 'right' ? 'flex-grow overflow-y-auto py-4' : 'py-4'}>
+          {mode === 'prompt' && (
+            <Input
+              type="text"
+              placeholder={promptPlaceholder}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleConfirm();
+              }}
+              autoFocus
+            />
+          )}
+          {children}
+        </div>
 
         {mode !== 'custom' && !children && (
-          <div className="flex justify-end gap-3 mt-6">
-            <button onClick={handleClose} className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors">
+          <DialogFooter className="mt-auto pt-4 gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleClose}>
               Cancel
-            </button>
-            <button onClick={handleConfirm} className={`px-4 py-2 text-white rounded-lg text-sm font-medium transition-colors ${colorClasses}`}>
+            </Button>
+            <Button 
+              variant={confirmColor === 'red' ? 'destructive' : 'default'}
+              onClick={handleConfirm}
+            >
               {confirmText}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         )}
-        </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

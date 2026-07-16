@@ -1,12 +1,16 @@
 import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Key, Server, Globe, Box, Folder, Download, Edit2, Trash2, Share2 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { useSessionStore } from '../store/session';
 import { decryptSecretPayload, decryptItemKeyWithPrivateKey, encryptItemKeyWithPublicKey, importPublicKey } from '@app/shared/src/crypto';
 import { apiFetch } from '../lib/apiFetch';
+import { Button } from '../components/ui/button';
+import { Checkbox } from '../components/ui/checkbox';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
 function getIconForTemplate(type: string) {
   switch (type) {
@@ -18,7 +22,8 @@ function getIconForTemplate(type: string) {
 }
 
 export function SecretsList() {
-  const { privateKey, user } = useSessionStore();
+  const { user, privateKey } = useSessionStore();
+  const navigate = useNavigate();
   const [decryptedSecrets, setDecryptedSecrets] = useState<Record<string, any>>({});
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [selectedSecretIds, setSelectedSecretIds] = useState<string[]>([]);
@@ -330,31 +335,31 @@ export function SecretsList() {
     <div className="w-full">
       <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Secrets VowGuard</h1>
-        <div className="flex gap-4">
-          <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-            <Download className="w-4 h-4" /> Export VowGuard
-          </button>
-          <Link to="/import" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Secrets</h1>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="w-4 h-4 mr-2" /> Export
+          </Button>
+          <Button variant="outline" onClick={() => navigate('/import')}>
             Import CSV
-          </Link>
-          <Link to={`/secrets/new${selectedFolderId ? `?folderId=${selectedFolderId}` : ''}`} className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">
-            <Plus className="w-4 h-4" /> Add Secret
-          </Link>
+          </Button>
+          <Button onClick={() => navigate(`/secrets/new${selectedFolderId ? `?folderId=${selectedFolderId}` : ''}`)}>
+            <Plus className="w-4 h-4 mr-2" /> Add Secret
+          </Button>
         </div>
       </div>
 
-      <div className="flex gap-8">
-        <div className="w-64 flex-shrink-0">
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="w-full md:w-64 flex-shrink-0">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Folders</h2>
-            <button onClick={handleCreateFolder} className="text-gray-500 hover:text-gray-700">
-              <Plus className="w-4 h-4" />
-            </button>
+            <h2 className="text-lg font-semibold tracking-tight">Folders</h2>
+            <Button variant="ghost" size="icon" onClick={handleCreateFolder}>
+              <Plus className="w-4 h-4 text-muted-foreground hover:text-foreground" />
+            </Button>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             <li>
-              <button onClick={() => setSelectedFolderId(null)} className={`flex w-full items-center gap-2 font-medium px-2 py-1 rounded ${!selectedFolderId ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100'}`}>
+              <button onClick={() => setSelectedFolderId(null)} className={`flex w-full items-center gap-2 font-medium px-3 py-2 rounded-md text-sm transition-colors ${!selectedFolderId ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
                 <Folder className="w-4 h-4" /> All Secrets
               </button>
             </li>
@@ -362,15 +367,15 @@ export function SecretsList() {
               const isOwner = folder.ownerId === user?.id;
               return (
               <li key={folder.id} className="group flex items-center justify-between">
-                <button onClick={() => setSelectedFolderId(folder.id)} className={`flex flex-1 items-center gap-2 px-2 py-1 rounded text-left truncate ${selectedFolderId === folder.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
+                <button onClick={() => setSelectedFolderId(folder.id)} className={`flex flex-1 items-center gap-2 px-3 py-2 rounded-md text-sm text-left truncate transition-colors ${selectedFolderId === folder.id ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}>
                   <Folder className="w-4 h-4 flex-shrink-0" /> <span className="truncate">{folder.name}</span>
-                  {!isOwner && <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 text-blue-800 rounded-full">Shared</span>}
+                  {!isOwner && <span className="ml-2 px-2 py-0.5 text-[10px] uppercase font-semibold bg-primary/20 text-primary rounded-full">Shared</span>}
                 </button>
                 {isOwner && (
-                  <div className="hidden group-hover:flex items-center gap-1">
-                    <button onClick={() => setShareFolderModal({ isOpen: true, folderId: folder.id, folderName: folder.name })} className="p-1 text-gray-400 hover:text-green-600" title="Manage Access"><Share2 className="w-3 h-3" /></button>
-                    <button onClick={() => handleRenameFolder(folder.id, folder.name)} className="p-1 text-gray-400 hover:text-blue-600" title="Rename Folder"><Edit2 className="w-3 h-3" /></button>
-                    <button onClick={() => handleDeleteFolder(folder.id)} className="p-1 text-gray-400 hover:text-red-600" title="Delete Folder"><Trash2 className="w-3 h-3" /></button>
+                  <div className="hidden group-hover:flex items-center gap-1 pr-2">
+                    <button onClick={() => setShareFolderModal({ isOpen: true, folderId: folder.id, folderName: folder.name })} className="p-1 text-muted-foreground hover:text-status-success transition-colors" title="Manage Access"><Share2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleRenameFolder(folder.id, folder.name)} className="p-1 text-muted-foreground hover:text-primary transition-colors" title="Rename Folder"><Edit2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => handleDeleteFolder(folder.id)} className="p-1 text-muted-foreground hover:text-status-danger transition-colors" title="Delete Folder"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 )}
               </li>
@@ -379,110 +384,109 @@ export function SecretsList() {
           </ul>
         </div>
         
-        <div className="flex-grow">
+        <div className="flex-grow min-w-0">
           {selectedSecretIds.length > 0 && (
-            <div className="mb-4 flex items-center gap-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
-              <span className="text-sm font-medium text-blue-800">{selectedSecretIds.length} selected</span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-blue-600">Move to:</span>
-                <select 
-                  className="text-sm border-gray-300 rounded-md p-1"
-                  onChange={(e) => {
-                    if(e.target.value) handleBulkMove(e.target.value);
-                    e.target.value = '';
-                  }}
-                  defaultValue=""
-                >
-                  <option value="" disabled>Select folder...</option>
-                  {folders?.map((f: any) => <option key={f.id} value={f.id}>{f.name}</option>)}
-                </select>
+            <div className="mb-4 flex items-center justify-between bg-primary/10 p-3 rounded-lg border border-primary/20">
+              <span className="text-sm font-medium text-primary">{selectedSecretIds.length} selected</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-primary">Move to:</span>
+                <Select onValueChange={(val: any) => { if(val) handleBulkMove(val); }}>
+                  <SelectTrigger className="w-[180px] bg-background">
+                    <SelectValue placeholder="Select folder..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {folders?.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
 
       {isLoading ? (
-        <div>Loading...</div>
+        <div className="text-sm text-muted-foreground p-4">Loading...</div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th className="px-6 py-3 text-left w-12">
-                  <input type="checkbox" className="rounded border-gray-300"
+        <div className="bg-card rounded-lg shadow-sm border border-border overflow-hidden">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="w-12 text-center pl-4">
+                  <Checkbox 
                     checked={filteredSecrets.length > 0 && selectedSecretIds.length === filteredSecrets.length}
-                    onChange={(e) => setSelectedSecretIds(e.target.checked ? filteredSecrets.map((s:any) => s.id) : [])}
+                    onCheckedChange={(c) => setSelectedSecretIds(c ? filteredSecrets.map((s:any) => s.id) : [])}
                   />
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                </TableHead>
+                <TableHead className="font-semibold text-muted-foreground">Name</TableHead>
+                <TableHead className="font-semibold text-muted-foreground">Username</TableHead>
+                <TableHead className="text-right font-semibold text-muted-foreground pr-4">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filteredSecrets.map((secret: any) => (
-                <tr key={secret.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <input type="checkbox" className="rounded border-gray-300"
+                <TableRow key={secret.id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell className="pl-4">
+                    <Checkbox 
                       checked={selectedSecretIds.includes(secret.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedSecretIds([...selectedSecretIds, secret.id]);
+                      onCheckedChange={(c) => {
+                        if (c) setSelectedSecretIds([...selectedSecretIds, secret.id]);
                         else setSelectedSecretIds(selectedSecretIds.filter(id => id !== secret.id));
                       }}
                     />
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell>
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-500">
+                      <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center bg-muted rounded-md text-muted-foreground border border-border/50">
                         {getIconForTemplate(secret.templateType)}
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{secret.name}</div>
-                        <div className="text-sm text-gray-500">{secret.domain}</div>
+                      <div className="ml-4 overflow-hidden">
+                        <div className="text-sm font-medium text-foreground truncate">{secret.name}</div>
+                        <div className="text-xs text-muted-foreground truncate">{secret.domain}</div>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 dark:text-gray-300">
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm text-foreground truncate max-w-[150px]">
                       {decryptedSecrets[secret.id]?.username || '-'}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  </TableCell>
+                  <TableCell className="text-right pr-4">
+                    <div className="flex items-center justify-end gap-3">
                     {secret.shares?.some((s: any) => s.recipientUserId === user?.id && s.permission === 'ONE_CLICK_LOGIN_ONLY') ? (
-                      <span className="text-gray-400 italic mr-4" title="Use the VowGuard extension to autofill these credentials">One-Click Only</span>
+                      <span className="text-xs text-muted-foreground italic bg-muted px-2 py-1 rounded-md" title="Use the VowGuard extension to autofill these credentials">One-Click Only</span>
                     ) : (
-                      <Link to={`/secrets/${secret.id}`} className="text-primary hover:text-blue-900 mr-4">View</Link>
+                      <Link to={`/secrets/${secret.id}`} className="text-sm font-medium text-primary hover:text-blue-700 transition-colors">View</Link>
                     )}
                     {(secret.ownerId === user?.id || secret.shares?.some((s: any) => s.recipientUserId === user?.id && s.permission === 'MODIFY')) && (
-                      <button onClick={() => handleDelete(secret.id)} className="text-red-600 hover:text-red-900">
+                      <button onClick={() => handleDelete(secret.id)} className="text-sm font-medium text-status-danger hover:text-red-700 transition-colors">
                         {selectedFolderId ? 'Remove' : 'Delete'}
                       </button>
                     )}
-                  </td>
-                </tr>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ))}
               {filteredSecrets.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-16 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-4">
-                      <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-full">
-                        <Key className="w-8 h-8 text-gray-400" />
+                <TableRow>
+                  <TableCell colSpan={4} className="h-64 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="bg-muted p-4 rounded-full border border-border/50">
+                        <Key className="w-8 h-8 text-muted-foreground" />
                       </div>
-                      <div className="text-gray-900 dark:text-white font-medium text-lg">No secrets found here</div>
-                      <p className="text-gray-500 max-w-sm text-sm">
+                      <div className="text-foreground font-semibold text-lg tracking-tight">No secrets found</div>
+                      <p className="text-muted-foreground max-w-sm text-sm mx-auto">
                         {selectedFolderId ? "This folder is empty. You can add new secrets here or move existing ones." : "Your vault is empty. Add a new secret to get started securely storing your passwords."}
                       </p>
-                      <Link to={`/secrets/new${selectedFolderId ? `?folderId=${selectedFolderId}` : ''}`} className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 font-medium">
-                        <Plus className="w-4 h-4" /> Add Secret
-                      </Link>
+                      <Button onClick={() => navigate(`/secrets/new${selectedFolderId ? `?folderId=${selectedFolderId}` : ''}`)} className="mt-2">
+                        <Plus className="w-4 h-4 mr-2" /> Add Secret
+                      </Button>
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       )}
-      </div>
+        </div></div>
     </div>
     
       <Modal 
@@ -505,20 +509,33 @@ export function SecretsList() {
         <div className="space-y-6">
           {(() => {
             const activeFolder = folders?.find((f: any) => f.id === shareFolderModal.folderId);
-            const sharedUserIds = new Set<string>();
+            const sharedUsersMap = new Map<string, string>(); // userId -> permission
             activeFolder?.secrets?.forEach((fs: any) => {
-              fs.secret?.shares?.forEach((share: any) => sharedUserIds.add(share.recipientUserId));
+              fs.secret?.shares?.forEach((share: any) => sharedUsersMap.set(share.recipientUserId, share.permission));
             });
-            const sharedUsersList = Array.from(sharedUserIds).map(id => users?.find((u: any) => u.id === id)).filter(Boolean);
+            const sharedUsersList = Array.from(sharedUsersMap.entries()).map(([id, perm]) => ({
+              user: users?.find((u: any) => u.id === id),
+              permission: perm
+            })).filter(x => x.user);
 
             return sharedUsersList.length > 0 ? (
               <div>
                 <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Currently Shared With</h4>
                 <ul className="divide-y divide-gray-200 dark:divide-gray-700 border rounded-lg">
                   {sharedUsersList.map((su: any) => (
-                    <li key={su.id} className="px-3 py-2 flex justify-between items-center text-sm text-gray-700 dark:text-gray-300">
-                      <span>{su.email}</span>
-                      <button onClick={() => handleRevokeFolderShare(shareFolderModal.folderId, su.id)} className="text-red-600 hover:text-red-800 font-medium">Revoke</button>
+                    <li key={su.user.id} className="px-3 py-2 flex justify-between items-center text-sm text-gray-700 dark:text-gray-300">
+                      <span>{su.user.email} <span className="text-xs text-gray-500 ml-2">({su.permission})</span></span>
+                      <div className="flex items-center gap-2">
+                        <select 
+                          className="text-xs border border-gray-300 rounded p-1 dark:bg-gray-800 dark:border-gray-600"
+                          value={su.permission}
+                          onChange={(e) => submitFolderShare(su.user.id, e.target.value)}
+                        >
+                          <option value="VIEW">Read Only</option>
+                          <option value="MODIFY">Read & Write</option>
+                        </select>
+                        <button onClick={() => handleRevokeFolderShare(shareFolderModal.folderId, su.user.id)} className="text-red-600 hover:text-red-800 font-medium ml-2">Revoke</button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -526,6 +543,14 @@ export function SecretsList() {
             ) : null;
           })()}
           
+          {(() => {
+            const activeFolder = folders?.find((f: any) => f.id === shareFolderModal.folderId);
+            const sharedUserIds = new Set<string>();
+            activeFolder?.secrets?.forEach((fs: any) => {
+              fs.secret?.shares?.forEach((share: any) => sharedUserIds.add(share.recipientUserId));
+            });
+            
+            return (
           <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Share with New User</h4>
             <div className="space-y-4">
@@ -537,7 +562,7 @@ export function SecretsList() {
                   defaultValue=""
                 >
                   <option value="" disabled>Select a user...</option>
-                  {users?.filter((u: any) => u.id !== user?.id).map((u: any) => (
+                  {users?.filter((u: any) => u.id !== user?.id && !sharedUserIds.has(u.id)).map((u: any) => (
                     <option key={u.id} value={u.id}>{u.email}</option>
                   ))}
                 </select>
@@ -574,6 +599,8 @@ export function SecretsList() {
           </div>
             </div>
           </div>
+          );
+          })()}
         </div>
       </Modal>
 
@@ -599,6 +626,5 @@ export function SecretsList() {
         onConfirm={confirmModal.onConfirm}
       />
     </div>
-  </div>
   );
 }

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw, Copy, Check } from 'lucide-react';
+import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 
 interface PasswordGeneratorProps {
   onSelect: (password: string) => void;
@@ -56,24 +58,24 @@ export function PasswordGenerator({ onSelect, initialLength = 16 }: PasswordGene
   };
 
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-4">
-      <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700 mb-4">
-        <span className="font-mono text-lg tracking-wider text-gray-900 dark:text-gray-100">{password}</span>
+    <div className="bg-card border border-border rounded-lg p-5 mb-4 shadow-sm">
+      <div className="flex items-center justify-between bg-muted/30 p-3 rounded-md border border-border mb-6">
+        <span className="font-mono text-lg tracking-wider text-foreground">{password}</span>
         <div className="flex gap-2">
-          <button type="button" onClick={generate} className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+          <Button variant="ghost" size="icon" onClick={generate} title="Regenerate">
             <RefreshCw className="w-4 h-4" />
-          </button>
-          <button type="button" onClick={handleCopy} className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-          </button>
+          </Button>
+          <Button variant="ghost" size="icon" onClick={handleCopy} title="Copy">
+            {copied ? <Check className="w-4 h-4 text-status-success" /> : <Copy className="w-4 h-4" />}
+          </Button>
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div>
-          <label className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
+          <label className="flex justify-between text-sm font-medium text-foreground mb-3">
             <span>Length</span>
-            <span>{length}</span>
+            <span className="text-muted-foreground">{length}</span>
           </label>
           <input
             type="range"
@@ -81,27 +83,35 @@ export function PasswordGenerator({ onSelect, initialLength = 16 }: PasswordGene
             max="64"
             value={length}
             onChange={(e) => setLength(parseInt(e.target.value))}
-            className="w-full"
+            className="w-full accent-primary"
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={useUpper} onChange={(e) => setUseUpper(e.target.checked)} className="rounded text-primary focus:ring-primary" />
-            Uppercase (A-Z)
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={useLower} onChange={(e) => setUseLower(e.target.checked)} className="rounded text-primary focus:ring-primary" />
-            Lowercase (a-z)
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={useNumbers} onChange={(e) => setUseNumbers(e.target.checked)} className="rounded text-primary focus:ring-primary" />
-            Numbers (0-9)
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={useSymbols} onChange={(e) => setUseSymbols(e.target.checked)} className="rounded text-primary focus:ring-primary" />
-            Symbols (!@#)
-          </label>
+        <div className="grid grid-cols-2 gap-4 text-sm text-foreground">
+          <div className="flex items-center space-x-2">
+            <Checkbox id="useUpper" checked={useUpper} onCheckedChange={(c) => setUseUpper(!!c)} />
+            <label htmlFor="useUpper" className="text-sm font-medium leading-none cursor-pointer">
+              Uppercase (A-Z)
+            </label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox id="useLower" checked={useLower} onCheckedChange={(c) => setUseLower(!!c)} />
+            <label htmlFor="useLower" className="text-sm font-medium leading-none cursor-pointer">
+              Lowercase (a-z)
+            </label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox id="useNumbers" checked={useNumbers} onCheckedChange={(c) => setUseNumbers(!!c)} />
+            <label htmlFor="useNumbers" className="text-sm font-medium leading-none cursor-pointer">
+              Numbers (0-9)
+            </label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox id="useSymbols" checked={useSymbols} onCheckedChange={(c) => setUseSymbols(!!c)} />
+            <label htmlFor="useSymbols" className="text-sm font-medium leading-none cursor-pointer">
+              Symbols (!@#)
+            </label>
+          </div>
         </div>
       </div>
     </div>

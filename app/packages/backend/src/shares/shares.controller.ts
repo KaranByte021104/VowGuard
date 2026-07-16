@@ -38,6 +38,11 @@ export class SharesController {
     return this.sharesService.acceptThirdPartyInvite(body.tokenHash, body.ephemeralPublicKey, body.encryptedPrivateKey);
   }
 
+  @Get('external/:tokenHash')
+  getExternalInvite(@Param('tokenHash') tokenHash: string) {
+    return this.sharesService.getExternalInvite(tokenHash);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Post('invite/:id/finalize')
   finalizeThirdPartyInvite(
@@ -46,6 +51,12 @@ export class SharesController {
     @Body() body: { encryptedItemKey: string }
   ) {
     return this.sharesService.finalizeThirdPartyInvite(id, body.encryptedItemKey, req.user.organizationId, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('invite/:id')
+  revokeThirdPartyInvite(@Request() req, @Param('id') id: string) {
+    return this.sharesService.revokeThirdPartyInvite(id, req.user.organizationId, req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)

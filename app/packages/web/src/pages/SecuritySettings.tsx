@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Shield, Smartphone, AlertCircle, Info } from 'lucide-react';
 import { apiFetch } from '../lib/apiFetch';
 import { useSessionStore } from '../store/session';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 
 export function SecuritySettings() {
   const { user, setUser } = useSessionStore();
@@ -102,25 +104,24 @@ export function SecuritySettings() {
                   Your account is protected. You can reconfigure MFA if you lost access to your authenticator app or got a new device.
                 </p>
                 <div className="ml-7">
-                  <button
+                  <Button
+                    variant="outline"
                     onClick={handleSetupMfa}
                     disabled={loading}
-                    className="px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 text-sm font-medium"
                   >
                     {loading ? 'Setting up...' : 'Set up again'}
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
 
             {!mfaEnabled && !qrCode && !success && (
-              <button
+              <Button
                 onClick={handleSetupMfa}
                 disabled={loading}
-                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 {loading ? 'Setting up...' : 'Setup MFA'}
-              </button>
+              </Button>
             )}
 
             {qrCode && !success && (
@@ -141,21 +142,21 @@ export function SecuritySettings() {
                 
                 <h4 className="font-medium text-gray-900 dark:text-white mb-2">2. Enter verification code</h4>
                 <form onSubmit={handleVerifyMfa} className="flex gap-3">
-                  <input
+                  <Input
                     type="text"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder="000000"
                     maxLength={6}
-                    className="flex-1 max-w-xs px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    className="max-w-xs"
                   />
-                  <button
+                  <Button
                     type="submit"
                     disabled={loading || token.length !== 6}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                    className="bg-status-success hover:bg-status-success/90 text-white"
                   >
                     Verify & Enable
-                  </button>
+                  </Button>
                 </form>
               </div>
             )}

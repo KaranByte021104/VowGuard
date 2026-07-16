@@ -129,10 +129,15 @@ export class FoldersService {
     }
 
     if (sharesToCreate.length > 0) {
-      await this.prisma.secretShare.createMany({
-        data: sharesToCreate,
-        skipDuplicates: true
-      });
+      const secretIds = sharesToCreate.map(s => s.secretId);
+      await this.prisma.$transaction([
+        this.prisma.secretShare.deleteMany({
+          where: { secretId: { in: secretIds }, recipientUserId }
+        }),
+        this.prisma.secretShare.createMany({
+          data: sharesToCreate
+        })
+      ]);
     }
 
     return { success: true, sharesCreated: sharesToCreate.length };

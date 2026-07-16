@@ -14,7 +14,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || origin === (process.env.WEB_URL || 'http://localhost:5173') || origin.startsWith('chrome-extension://')) {
+      if (!origin || origin === (process.env.WEB_URL || 'http://localhost:5173') || origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://') || origin.startsWith('http://localhost:')) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));

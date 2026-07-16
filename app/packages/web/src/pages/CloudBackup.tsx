@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Cloud, CheckCircle, Clock, Download } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { apiFetch } from '../lib/apiFetch';
+import { Button } from '../components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 
 
 interface BackupConfig {
@@ -196,57 +198,57 @@ export function CloudBackup() {
       </div>
 
       {!config ? (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center">
-          <Cloud className="w-16 h-16 text-blue-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Connect Cloud Storage</h2>
-          <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+        <div className="bg-card rounded-xl shadow-sm border border-border p-8 text-center">
+          <Cloud className="w-16 h-16 text-primary mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-foreground mb-2">Connect Cloud Storage</h2>
+          <p className="text-muted-foreground mb-6 max-w-md mx-auto">
             Connect your Google Drive to automatically back up your vault. 
             All data is encrypted end-to-end and Google cannot read your secrets.
           </p>
-          <button
-            onClick={handleConnect}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-          >
+          <Button onClick={handleConnect} size="lg">
             Connect Google Drive
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-6 space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full text-green-600 dark:text-green-400">
+                <div className="p-2 bg-status-success/20 rounded-full text-status-success">
                   <CheckCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white">Connected to {config.provider}</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Automated backups are active</p>
+                  <h3 className="font-semibold text-foreground">Connected to {config.provider}</h3>
+                  <p className="text-sm text-muted-foreground">Automated backups are active</p>
                 </div>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={handleDisconnect}
-                className="text-sm text-red-600 hover:text-red-700 font-medium"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
               >
                 Disconnect
-              </button>
+              </Button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Backup Frequency</label>
-                <select
-                  value={frequency}
-                  onChange={(e) => setFrequency(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg"
-                >
-                  <option value="DAILY">Daily</option>
-                  <option value="WEEKLY">Weekly</option>
-                </select>
+                <label className="block text-sm font-medium text-foreground mb-1">Backup Frequency</label>
+                <Select value={frequency} onValueChange={(val: any) => setFrequency(val)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DAILY">Daily</SelectItem>
+                    <SelectItem value="WEEKLY">Weekly</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">Owned Only</span>
-                  <span className="text-xs text-gray-500">Exclude secrets shared with you</span>
+                  <span className="block text-sm font-medium text-foreground">Owned Only</span>
+                  <span className="text-xs text-muted-foreground">Exclude secrets shared with you</span>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -258,39 +260,41 @@ export function CloudBackup() {
                   <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/80 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
                 </label>
               </div>
-              <button
+              <Button
+                variant="secondary"
                 onClick={handleSaveConfig}
-                className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg font-medium transition-colors"
+                className="w-full"
               >
                 Save Settings
-              </button>
+              </Button>
             </div>
 
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2 text-sm text-gray-500">
+            <div className="pt-4 border-t border-border flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="w-4 h-4" />
               <span>Next Run: {config.nextScheduledRun ? new Date(config.nextScheduledRun).toLocaleString() : 'Pending'}</span>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Restore from Backup</h3>
+          <div className="bg-card rounded-xl shadow-sm border border-border p-6">
+            <h3 className="font-semibold text-foreground mb-4">Restore from Backup</h3>
             {files.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-sm">No backups found in connected storage.</p>
+              <p className="text-muted-foreground text-sm">No backups found in connected storage.</p>
             ) : (
               <div className="space-y-3">
                 {files.map(file => (
-                  <div key={file.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div key={file.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
                     <div>
-                      <div className="font-medium text-sm text-gray-900 dark:text-white">{file.name}</div>
-                      <div className="text-xs text-gray-500">{new Date(file.createdTime).toLocaleString()} &bull; {(parseInt(file.size)/1024).toFixed(1)} KB</div>
+                      <div className="font-medium text-sm text-foreground">{file.name}</div>
+                      <div className="text-xs text-muted-foreground">{new Date(file.createdTime).toLocaleString()} &bull; {(parseInt(file.size)/1024).toFixed(1)} KB</div>
                     </div>
-                    <button
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleRestore(file.id)}
-                      className="p-2 text-primary hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                       title="Restore"
                     >
-                      <Download className="w-4 h-4" />
-                    </button>
+                      <Download className="w-4 h-4 text-primary" />
+                    </Button>
                   </div>
                 ))}
               </div>
