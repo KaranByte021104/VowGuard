@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Shield, Eye, EyeOff } from 'lucide-react';
 import { deriveKey, generateKeyPair, encryptPrivateKey, exportPublicKey } from '@app/shared/src/crypto';
 import { useSessionStore } from '../store/session';
@@ -17,6 +17,7 @@ export function Signup() {
 
   const [formData, setFormData] = useState({
     email: '',
+    name: '',
     loginPassword: '',
     organizationName: '',
     type: 'TEAMS',
@@ -102,6 +103,7 @@ export function Signup() {
       // Send to server
       const payload: any = {
         email: formData.email,
+        name: formData.name,
         loginPassword: formData.loginPassword,
         publicKey: publicKeyBase64,
         encryptedPrivateKey: combinedEncryptedKey,
@@ -178,6 +180,10 @@ export function Signup() {
                   </div>
                 )}
                 <div>
+                  <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                  <input name="name" value={formData.name} required className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2" onChange={handleChange} />
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700">Email Address</label>
                   <input name="email" value={formData.email} type="email" required disabled={isInviteFlow} className={`mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 ${isInviteFlow ? 'bg-gray-100 text-gray-500' : ''}`} onChange={handleChange} />
                 </div>
@@ -213,11 +219,17 @@ export function Signup() {
                   </div>
                 </div>
                 <button type="submit" disabled={loading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700">
-                  {loading ? 'Creating...' : (isInviteFlow ? 'Join Vault' : 'Create Vault')}
+                  {loading ? 'Creating...' : (isInviteFlow ? 'Join VowGuard' : 'Create VowGuard')}
                 </button>
               </>
             )}
           </form>
+          
+          <div className="mt-6 text-center">
+            <Link to="/login" className="font-medium text-primary hover:text-blue-500 text-sm">
+              Already have an account? Sign in
+            </Link>
+          </div>
         </div>
       </div>
     </div>

@@ -174,7 +174,7 @@ export function PopupApp() {
         <div className="bg-blue-600 text-white p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
-            <h1 className="font-bold">SecureVault</h1>
+            <h1 className="font-bold">VowGuard</h1>
           </div>
           <button onClick={() => {
             chrome.runtime.sendMessage({ type: 'LOCK' }, () => checkSession());
@@ -204,7 +204,7 @@ export function PopupApp() {
     <div className="flex flex-col h-full bg-gray-50 text-gray-900">
       <div className="bg-blue-600 text-white p-4 flex items-center gap-2">
         <Shield className="w-5 h-5" />
-        <h1 className="font-bold">SecureVault</h1>
+        <h1 className="font-bold">VowGuard</h1>
       </div>
       <div className="p-6">
         <h2 className="text-xl font-bold mb-4 text-center">Unlock Extension</h2>

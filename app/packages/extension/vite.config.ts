@@ -8,8 +8,8 @@ function generateManifest() {
   const manifest = readJsonFile('manifest.json');
   const pkg = readJsonFile('package.json');
   return {
-    name: "SecureVault",
-    description: "The SecureVault companion browser extension",
+    name: "VowGuard",
+    description: "The VowGuard companion browser extension",
     version: pkg.version,
     ...manifest,
     content_security_policy: {

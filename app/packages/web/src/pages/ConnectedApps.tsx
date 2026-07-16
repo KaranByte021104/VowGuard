@@ -63,7 +63,7 @@ export function ConnectedApps() {
     <div className="space-y-6">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Connected Apps</h1>
-        <p className="text-gray-500 dark:text-gray-400">Applications you can access using your SecureVault Single Sign-On.</p>
+        <p className="text-gray-500 dark:text-gray-400">Applications you can access using your VowGuard Single Sign-On.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

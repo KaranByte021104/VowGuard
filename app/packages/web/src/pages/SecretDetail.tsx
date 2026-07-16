@@ -38,6 +38,7 @@ export function SecretDetail() {
     username: "",
     password: "",
     notes: "",
+    isPersonal: false,
   });
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -173,6 +174,7 @@ export function SecretDetail() {
           username: payload.username || "",
           password: payload.password || "",
           notes: payload.notes || "",
+          isPersonal: secret.isPersonal || false,
         });
       } catch (e) {
         setDecryptionError("Failed to decrypt secret.");
@@ -565,6 +567,7 @@ export function SecretDetail() {
           isDictionaryWord,
           isReused: false,
           isRecycled,
+          isPersonal: formData.isPersonal,
         }),
       });
 
@@ -796,7 +799,7 @@ export function SecretDetail() {
     return (
       <div className="p-8 text-center bg-yellow-50 dark:bg-yellow-900/20 rounded-lg max-w-xl mx-auto mt-20 border border-yellow-200 dark:border-yellow-900/50">
         <h2 className="text-xl font-bold text-yellow-800 dark:text-yellow-500">
-          Vault Locked
+          VowGuard Locked
         </h2>
         <p className="mt-2 text-yellow-700 dark:text-yellow-600">
           Please unlock your vault to view this secret.
@@ -805,7 +808,7 @@ export function SecretDetail() {
           onClick={() => (window.location.href = "/login")}
           className="mt-4 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded font-medium"
         >
-          Unlock Vault
+          Unlock VowGuard
         </button>
       </div>
     );
@@ -864,7 +867,7 @@ export function SecretDetail() {
             onClick={() => navigate("/secrets")}
             className="text-gray-500 hover:underline"
           >
-            Return to Vault
+            Return to VowGuard
           </button>
         </div>
       </div>
@@ -881,7 +884,7 @@ export function SecretDetail() {
     );
 
   return (
-    <div className="max-w-3xl mx-auto p-8">
+    <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
         <button
           onClick={() => navigate("/secrets")}
@@ -1089,6 +1092,25 @@ export function SecretDetail() {
                 disabled={!isEditing}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 bg-gray-50 dark:bg-gray-700 dark:text-white disabled:opacity-75 disabled:bg-gray-100 dark:disabled:bg-gray-800"
               />
+            </div>
+
+            <div className="mt-4 flex items-center">
+              <input
+                type="checkbox"
+                id="isPersonal"
+                checked={formData.isPersonal}
+                onChange={(e) =>
+                  setFormData({ ...formData, isPersonal: e.target.checked })
+                }
+                disabled={!isEditing}
+                className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded disabled:opacity-50"
+              />
+              <label
+                htmlFor="isPersonal"
+                className={`ml-2 block text-sm ${!isEditing ? "text-gray-400" : "text-gray-700 dark:text-gray-300"}`}
+              >
+                Personal Secret (Only visible to you)
+              </label>
             </div>
           </>
         )}

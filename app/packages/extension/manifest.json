@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SecureVault",
+  "name": "vowguard",
   "version": "1.0.0",
-  "description": "The SecureVault companion browser extension",
+  "description": "The VowGuard companion browser extension",
   "action": {
     "default_popup": "src/popup/index.html"
   },

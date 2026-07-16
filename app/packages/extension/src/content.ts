@@ -98,7 +98,7 @@ function handleUnknownFormSubmission(usernameField: HTMLInputElement | null, pas
   const password = passwordField.value;
   
   if (password) {
-    const save = window.confirm(`SecureVault: Save new password for ${origin}?`);
+    const save = window.confirm(`VowGuard: Save new password for ${origin}?`);
     if (save) {
       chrome.runtime.sendMessage({ 
         type: 'SAVE_CREDENTIAL', 
@@ -107,7 +107,7 @@ function handleUnknownFormSubmission(usernameField: HTMLInputElement | null, pas
         password 
       }, (response) => {
         if (response && response.success) {
-          alert('SecureVault: Password saved successfully!');
+          alert('VowGuard: Password saved successfully!');
         } else {
           console.error('Failed to save password', response?.error);
         }

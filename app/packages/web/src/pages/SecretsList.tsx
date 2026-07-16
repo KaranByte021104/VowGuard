@@ -282,11 +282,11 @@ export function SecretsList() {
   if (!privateKey) {
     return (
       <div className="p-8 text-center bg-yellow-50 rounded-lg">
-        <h2 className="text-xl font-bold text-yellow-800">Vault Locked</h2>
+        <h2 className="text-xl font-bold text-yellow-800">VowGuard Locked</h2>
         <p className="mt-2 text-yellow-700">Please unlock your vault to view secrets.</p>
         {/* Sprint 3 temporary fix: Reload to prompt login if missing key */}
         <button onClick={() => window.location.href = '/login'} className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded">
-          Unlock Vault
+          Unlock VowGuard
         </button>
       </div>
     );
@@ -328,12 +328,12 @@ export function SecretsList() {
 
   return (
     <div className="w-full">
-      <div className="p-8">
+      <div className="space-y-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Secrets Vault</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Secrets VowGuard</h1>
         <div className="flex gap-4">
           <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
-            <Download className="w-4 h-4" /> Export Vault
+            <Download className="w-4 h-4" /> Export VowGuard
           </button>
           <Link to="/import" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
             Import CSV
@@ -447,7 +447,11 @@ export function SecretsList() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link to={`/secrets/${secret.id}`} className="text-primary hover:text-blue-900 mr-4">View</Link>
+                    {secret.shares?.some((s: any) => s.recipientUserId === user?.id && s.permission === 'ONE_CLICK_LOGIN_ONLY') ? (
+                      <span className="text-gray-400 italic mr-4" title="Use the VowGuard extension to autofill these credentials">One-Click Only</span>
+                    ) : (
+                      <Link to={`/secrets/${secret.id}`} className="text-primary hover:text-blue-900 mr-4">View</Link>
+                    )}
                     {(secret.ownerId === user?.id || secret.shares?.some((s: any) => s.recipientUserId === user?.id && s.permission === 'MODIFY')) && (
                       <button onClick={() => handleDelete(secret.id)} className="text-red-600 hover:text-red-900">
                         {selectedFolderId ? 'Remove' : 'Delete'}

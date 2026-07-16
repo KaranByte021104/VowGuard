@@ -95,7 +95,7 @@ export function AddSecret() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!publicKey) {
-      toast.error("Vault is locked. Cannot encrypt.");
+      toast.error("VowGuard is locked. Cannot encrypt.");
       return;
     }
 
@@ -208,7 +208,7 @@ export function AddSecret() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-8">
+    <div className="space-y-6">
       <div className="flex items-center gap-4 mb-6">
         <button
           onClick={() => navigate(-1)}

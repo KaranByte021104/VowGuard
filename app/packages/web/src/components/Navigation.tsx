@@ -33,7 +33,7 @@ export function Navigation() {
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
           <Shield className="w-6 h-6 text-primary" />
-          Vault
+          VowGuard
         </h1>
       </div>
       
@@ -58,15 +58,28 @@ export function Navigation() {
       
       <div className="p-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700/30">
-            <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">
-              {user?.email?.[0]?.toUpperCase() || 'U'}
-            </div>
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-blue-50 dark:bg-blue-900/20'
+                  : 'bg-gray-50 dark:bg-gray-700/30 hover:bg-gray-100 dark:hover:bg-gray-700/50'
+              }`
+            }
+          >
+            {user?.avatarUrl ? (
+              <img src={user.avatarUrl} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">
+                {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
             <div className="flex flex-col truncate w-full">
-              <span className="text-sm font-medium text-gray-900 dark:text-white">{user?.role || 'User'}</span>
+              <span className="text-sm font-medium text-gray-900 dark:text-white">{user?.name || user?.role || 'User'}</span>
               <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email || 'Loading...'}</span>
             </div>
-          </div>
+          </NavLink>
           <button 
             onClick={handleLogout}
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors w-full text-left"

@@ -66,6 +66,7 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           email: data.email,
+          name: data.name,
           loginPassword: loginPasswordHash,
           publicKey: data.publicKey,
           encryptedPrivateKey: data.encryptedPrivateKey,
@@ -88,6 +89,7 @@ export class AuthService {
           users: {
             create: {
               email: data.email,
+              name: data.name,
               loginPassword: loginPasswordHash,
               publicKey: data.publicKey,
               encryptedPrivateKey: data.encryptedPrivateKey,
@@ -105,7 +107,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.organizationId);
 
     return {
-      user: { id: user.id, email: user.email, role: user.role, encryptedPrivateKey: user.encryptedPrivateKey, publicKey: user.publicKey },
+      user: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl, role: user.role, encryptedPrivateKey: user.encryptedPrivateKey, publicKey: user.publicKey, mfaEnabled: user.mfaType && user.mfaType !== 'NONE' },
       ...tokens,
     };
   }
@@ -157,7 +159,7 @@ export class AuthService {
     const tokens = await this.generateTokens(user.id, user.organizationId);
     
     return {
-      user: { id: user.id, email: user.email, role: user.role, encryptedPrivateKey: user.encryptedPrivateKey, publicKey: user.publicKey },
+      user: { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl, role: user.role, encryptedPrivateKey: user.encryptedPrivateKey, publicKey: user.publicKey, mfaEnabled: user.mfaType && user.mfaType !== 'NONE' },
       ...tokens,
     };
   }
@@ -252,10 +254,13 @@ export class AuthService {
         user: {
           id: user.id,
           email: user.email,
+          name: user.name,
+          avatarUrl: user.avatarUrl,
           role: user.role,
           organizationId: user.organizationId,
           publicKey: user.publicKey,
           encryptedPrivateKey: user.encryptedPrivateKey,
+          mfaEnabled: user.mfaType && user.mfaType !== 'NONE'
         }
       };
     } catch (e) {

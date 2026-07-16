@@ -1,5 +1,6 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as argon2 from 'argon2';
 
 @Injectable()
 export class UsersService {
@@ -76,5 +77,43 @@ export class UsersService {
       data: { mfaEnforced: enforce },
       select: { id: true, name: true, mfaEnforced: true }
     });
+  }
+
+  async updateProfile(userId: string, name: string, email: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { name, email },
+      select: { id: true, name: true, email: true, avatarUrl: true, role: true }
+    });
+  }
+
+  async updateAvatar(userId: string, avatarUrl: string) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { avatarUrl },
+      select: { id: true, name: true, email: true, avatarUrl: true, role: true }
+    });
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPasswordHash: string, newEncryptedPrivateKey: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+
+    const isValid = await argon2.verify(user.loginPassword, currentPassword);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid current password');
+    }
+
+    const hashedNewPassword = await argon2.hash(newPasswordHash); // newPasswordHash from client is usually plain newPassword, but we hash it here to be safe
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        loginPassword: hashedNewPassword,
+        encryptedPrivateKey: newEncryptedPrivateKey,
+      }
+    });
+
+    return { success: true };
   }
 }

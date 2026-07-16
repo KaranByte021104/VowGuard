@@ -111,7 +111,7 @@ export function EmergencyVault() {
 
   if (error) {
     return (
-      <div className="p-8 max-w-4xl mx-auto">
+      <div className="space-y-6">
         <Link to="/emergency" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6">
           <ArrowLeft className="w-4 h-4" /> Back
         </Link>
@@ -124,7 +124,7 @@ export function EmergencyVault() {
   }
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="space-y-6">
       <Link to="/emergency" className="inline-flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6">
         <ArrowLeft className="w-4 h-4" /> Back to Emergency Access
       </Link>
@@ -132,7 +132,7 @@ export function EmergencyVault() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
           <span className="bg-red-100 text-red-600 px-3 py-1 rounded-lg text-sm font-bold uppercase tracking-wide">Emergency Mode</span>
-          Vault Access
+          VowGuard Access
         </h1>
         <p className="text-gray-500 mt-2">You are viewing this vault under an active emergency grant. Read-only access.</p>
       </div>

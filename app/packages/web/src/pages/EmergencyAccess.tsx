@@ -179,7 +179,7 @@ export function EmergencyAccess() {
   };
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
+    <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Emergency Access</h1>
@@ -329,7 +329,7 @@ export function EmergencyAccess() {
                         onClick={() => navigate(`/emergency/${grant.owner.id}`)}
                         className="w-full py-2 bg-primary hover:bg-blue-700 text-white font-medium rounded-lg text-sm shadow-sm transition-colors"
                       >
-                        Enter Vault
+                        Enter VowGuard
                       </button>
                     </div>
                   )}

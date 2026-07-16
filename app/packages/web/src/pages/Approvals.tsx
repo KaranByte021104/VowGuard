@@ -82,7 +82,7 @@ export function Approvals() {
   if (isLoading) return <div className="p-8">Loading requests...</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
+    <div className="space-y-6">
       <div className="flex items-center gap-3 mb-8">
         <ShieldAlert className="w-8 h-8 text-primary" />
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Pending Approvals</h1>

@@ -21,7 +21,14 @@ export function UserManagement() {
   const fetchUsers = () => {
     apiFetch('http://localhost:3000/users', { credentials: 'include' })
       .then(res => res.json())
-      .then(setUsers)
+      .then(data => {
+        if (Array.isArray(data)) {
+          setUsers(data);
+        } else {
+          setUsers([]);
+          setError(data.message || 'Failed to load users');
+        }
+      })
       .catch(console.error);
   };
 
@@ -101,7 +108,7 @@ export function UserManagement() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <UsersIcon className="w-8 h-8 text-primary" />
@@ -119,7 +126,7 @@ export function UserManagement() {
       </div>
 
       {inviteModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Invite New User</h3>
             {inviteSuccess ? (
@@ -167,12 +174,12 @@ export function UserManagement() {
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                      {u.email[0].toUpperCase()}
+                      {u.email?.[0]?.toUpperCase() || 'U'}
                     </div>
                     <div>
                       <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                        {u.email}
-                        {u.id === user.id && <span className="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">You</span>}
+                        {u.email || 'Unknown User'}
+                        {u.id === user?.id && <span className="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded text-gray-600 dark:text-gray-300">You</span>}
                       </div>
                     </div>
                   </div>

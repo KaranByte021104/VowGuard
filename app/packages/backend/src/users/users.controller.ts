@@ -1,4 +1,7 @@
-import { Controller, Get, Put, Delete, Patch, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Put, Delete, Patch, Param, Body, UseGuards, Request, Post, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
@@ -8,6 +11,32 @@ import { Roles } from '../auth/decorators/roles.decorator';
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Patch('profile')
+  updateProfile(@Request() req, @Body() body: { name: string; email: string }) {
+    return this.usersService.updateProfile(req.user.id, body.name, body.email);
+  }
+
+  @Post('profile-picture')
+  @UseInterceptors(FileInterceptor('file', {
+    dest: './uploads',
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  }))
+  uploadProfilePicture(@Request() req, @UploadedFile() file: Express.Multer.File) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    const avatarUrl = `http://localhost:3000/uploads/${file.filename}`;
+    return this.usersService.updateAvatar(req.user.id, avatarUrl);
+  }
+
+  @Post('change-password')
+  changePassword(@Request() req, @Body() body: any) {
+    return this.usersService.changePassword(
+      req.user.id,
+      body.currentPassword,
+      body.newPassword,
+      body.newEncryptedPrivateKey
+    );
+  }
 
   @Get()
   getOrganizationUsers(@Request() req) {

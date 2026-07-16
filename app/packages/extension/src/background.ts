@@ -70,7 +70,14 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
               return bytes.buffer;
             };
 
-            const itemKeyEncrypted = base64ToArrayBuffer(secret.encryptedItemKey);
+            let targetItemKeyBase64 = secret.encryptedItemKey;
+            if (secret.shares && secret.shares.length > 0) {
+              targetItemKeyBase64 = secret.shares[0].encryptedItemKey;
+            } else if (secret.accessRequests && secret.accessRequests.length > 0 && secret.accessRequests[0].encryptedItemKey) {
+              targetItemKeyBase64 = secret.accessRequests[0].encryptedItemKey;
+            }
+
+            const itemKeyEncrypted = base64ToArrayBuffer(targetItemKeyBase64);
             const itemKey = await decryptItemKeyWithPrivateKey(itemKeyEncrypted, sessionKeys!.privateKey);
             
             const iv = new Uint8Array(base64ToArrayBuffer(secret.iv));

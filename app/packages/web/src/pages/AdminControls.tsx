@@ -109,7 +109,7 @@ export function AdminControls() {
   const availableForExemption = orgUsers.filter(u => !exemptedUserIds.has(u.id));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-3 mb-8">
         <Shield className="w-8 h-8 text-primary" />
         <div>

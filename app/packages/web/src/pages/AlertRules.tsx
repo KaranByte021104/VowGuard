@@ -15,18 +15,37 @@ export function AlertRules() {
     }
   });
 
+  const { data: users } = useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const res = await apiFetch('http://localhost:3000/users', { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    }
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<any>(null);
+  const [recipientType, setRecipientType] = useState('ALL_ADMINS');
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
 
   if (isLoading) return <div>Loading alert rules...</div>;
 
   const handleOpenModal = (rule?: any) => {
     setEditingRule(rule || null);
+    setRecipientType(rule?.recipientType || 'ALL_ADMINS');
+    setSelectedUsers(rule?.specificUsers?.map((su: any) => su.userId) || []);
     setIsModalOpen(true);
   };
 
   const handleSaveRule = async (e: any) => {
     e.preventDefault();
+
+    if (recipientType === 'SPECIFIC_USERS' && selectedUsers.length === 0) {
+      toast.error('Please select at least one user');
+      return;
+    }
+
     try {
       const formData = new FormData(e.target);
       const data = {
@@ -34,7 +53,8 @@ export function AlertRules() {
         name: formData.get('name'),
         eventTypes: formData.get('eventType') ? [formData.get('eventType')] : [],
         timing: formData.get('timing'),
-        recipientType: formData.get('recipientType'),
+        recipientType: recipientType,
+        specificUsers: selectedUsers,
       };
       
       const res = await apiFetch('http://localhost:3000/alerts/rules', {
@@ -68,7 +88,7 @@ export function AlertRules() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">
           <Bell className="w-8 h-8 text-primary" />
@@ -116,7 +136,11 @@ export function AlertRules() {
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {rule.recipients}
+                  {rule.recipientType === 'ALL_ADMINS' 
+                    ? 'All Admins' 
+                    : (rule.specificUsers?.length > 0 
+                        ? rule.specificUsers.map((su: any) => su.user?.name || su.user?.email).join(', ') 
+                        : 'Specific Users (None selected)')}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div className="flex items-center justify-end gap-3">
@@ -156,7 +180,7 @@ export function AlertRules() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Trigger</label>
-            <select name="eventType" className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <select name="eventType" defaultValue={editingRule?.eventTypes?.[0] || 'LOGIN_FAILED'} className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
               <option value="LOGIN_FAILED">Login Failed</option>
               <option value="BACKUP_FAILED">Backup Failed</option>
               <option value="THIRD_PARTY_INVITE_CREATED">External Share Created</option>
@@ -165,12 +189,45 @@ export function AlertRules() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timing</label>
-            <select name="timing" className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+            <select name="timing" defaultValue={editingRule?.timing || 'INSTANT'} className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white">
               <option value="INSTANT">Instant (Email/Slack)</option>
               <option value="DAILY_DIGEST">Daily Digest</option>
               <option value="WEEKLY_DIGEST">Weekly Digest</option>
             </select>
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients</label>
+            <select 
+              name="recipientType" 
+              value={recipientType}
+              onChange={(e) => setRecipientType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+              <option value="ALL_ADMINS">All Admins</option>
+              <option value="SPECIFIC_USERS">Specific Users</option>
+            </select>
+          </div>
+          {recipientType === 'SPECIFIC_USERS' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select Users</label>
+              <div className="max-h-40 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-lg p-2 space-y-2 bg-white dark:bg-gray-700">
+                {(users || []).map((u: any) => (
+                  <label key={u.id} className="flex items-center gap-2 cursor-pointer p-1 hover:bg-gray-50 dark:hover:bg-gray-600 rounded">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedUsers.includes(u.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedUsers([...selectedUsers, u.id]);
+                        else setSelectedUsers(selectedUsers.filter(id => id !== u.id));
+                      }}
+                      className="rounded text-primary focus:ring-primary w-4 h-4"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{u.name || u.email}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
             <button
               type="button"

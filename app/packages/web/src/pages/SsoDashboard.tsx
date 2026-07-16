@@ -71,7 +71,7 @@ export function SsoDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `SecureVault-IdP-Metadata.xml`;
+    a.download = `VowGuard-IdP-Metadata.xml`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -146,7 +146,7 @@ export function SsoDashboard() {
     <div className="space-y-6">
       <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4">
         <h4 className="font-semibold mb-1">Identity Provider Setup</h4>
-        <p className="text-sm">Download the metadata XML file below and upload it to the target application's SSO settings. This contains the SecureVault signing certificates and Login URLs.</p>
+        <p className="text-sm">Download the metadata XML file below and upload it to the target application's SSO settings. This contains the VowGuard signing certificates and Login URLs.</p>
       </div>
       <div className="flex justify-center">
         <button onClick={handleDownloadMetadata} className="flex items-center gap-2 bg-white border border-gray-300 px-6 py-3 rounded-lg shadow-sm hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:hover:bg-gray-700">

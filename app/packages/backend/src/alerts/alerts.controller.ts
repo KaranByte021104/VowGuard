@@ -14,12 +14,17 @@ export class AlertsController {
   @Get('rules')
   async getRules(@Request() req: any) {
     return this.prisma.notificationRule.findMany({
-      where: { organizationId: req.user.organizationId }
+      where: { organizationId: req.user.organizationId },
+      include: { specificUsers: { include: { user: true } } }
     });
   }
 
   @Post('rules')
   async saveRule(@Request() req: any, @Body() body: any) {
+    const specificUsersData = body.recipientType === 'SPECIFIC_USERS' && Array.isArray(body.specificUsers)
+      ? { deleteMany: {}, create: body.specificUsers.map((id: string) => ({ userId: id })) }
+      : { deleteMany: {} };
+
     if (body.id) {
       return this.prisma.notificationRule.update({
         where: { id: body.id, organizationId: req.user.organizationId },
@@ -28,7 +33,8 @@ export class AlertsController {
           ...(body.eventTypes && { eventTypes: body.eventTypes }),
           ...(body.recipientType && { recipientType: body.recipientType }),
           ...(body.timing && { timing: body.timing }),
-          ...(body.isEnabled !== undefined && { isEnabled: body.isEnabled })
+          ...(body.isEnabled !== undefined && { isEnabled: body.isEnabled }),
+          specificUsers: specificUsersData
         }
       });
     } else {
@@ -39,7 +45,10 @@ export class AlertsController {
           eventTypes: body.eventTypes || [],
           recipientType: body.recipientType || 'ALL_ADMINS',
           timing: body.timing || 'INSTANT',
-          isEnabled: body.isEnabled !== false
+          isEnabled: body.isEnabled !== false,
+          specificUsers: body.recipientType === 'SPECIFIC_USERS' && Array.isArray(body.specificUsers) ? {
+            create: body.specificUsers.map((id: string) => ({ userId: id }))
+          } : undefined
         }
       });
     }

@@ -163,6 +163,7 @@ export class SecretsService {
         containsUsername: data.containsUsername !== undefined ? data.containsUsername : undefined,
         isDictionaryWord: data.isDictionaryWord !== undefined ? data.isDictionaryWord : undefined,
         isRecycled: data.isRecycled !== undefined ? data.isRecycled : undefined,
+        isPersonal: data.isPersonal !== undefined ? data.isPersonal : undefined,
       }
     });
   }

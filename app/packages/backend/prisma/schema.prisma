@@ -96,6 +96,8 @@ model User {
   id                  String     @id @default(uuid())
   organizationId      String
   email               String     @unique
+  name                String?
+  avatarUrl           String?
   loginPassword       String     // Argon2 hash
   publicKey           String     // RSA public key
   encryptedPrivateKey String     // RSA private key encrypted with AES-256-GCM

@@ -29,7 +29,7 @@ export function ImportSecrets() {
     if (!file) return;
 
     if (!publicKey) {
-      setError("Vault is locked. Cannot encrypt imported secrets.");
+      setError("VowGuard is locked. Cannot encrypt imported secrets.");
       return;
     }
 
@@ -91,7 +91,7 @@ export function ImportSecrets() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
+    <div className="space-y-6">
       <div className="flex items-center gap-4 mb-6">
         <button onClick={() => navigate(-1)} className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300 transition-colors">
           <ArrowLeft className="w-5 h-5" />

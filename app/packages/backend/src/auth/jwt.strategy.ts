@@ -36,7 +36,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       email: user.email, 
       role: user.role, 
       publicKey: user.publicKey,
-      organizationId: user.organizationId
+      organizationId: user.organizationId,
+      mfaEnabled: user.mfaType && user.mfaType !== 'NONE'
     };
   }
 }

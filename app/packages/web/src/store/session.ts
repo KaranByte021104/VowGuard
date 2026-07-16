@@ -3,10 +3,13 @@ import { create } from 'zustand'
 export interface User {
   id: string;
   email: string;
+  name?: string;
+  avatarUrl?: string;
   role: string;
   organizationId: string;
   publicKey?: string; // base64 SPKI
   encryptedPrivateKey?: string;
+  mfaEnabled?: boolean;
 }
 
 interface SessionState {

@@ -22,6 +22,7 @@ import { AdminControls } from './pages/AdminControls';
 import { AlertRules } from './pages/AlertRules';
 import { UserManagement } from './pages/UserManagement';
 import { SecuritySettings } from './pages/SecuritySettings';
+import { Profile } from './pages/Profile';
 import './index.css';
 import App from './App.tsx';
 
@@ -96,6 +97,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="admin/users" element={<UserManagement />} />
             <Route path="alerts" element={<AlertRules />} />
             <Route path="security" element={<SecuritySettings />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
         </Routes>
       </BrowserRouter>
