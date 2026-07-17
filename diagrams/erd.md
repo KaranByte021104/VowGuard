@@ -1,24 +1,45 @@
 # SecureVault Database ERD
 
-
 ```mermaid
 erDiagram
     Organization {
         String id PK
         String name
-        String defaultPasswordPolicy
+        String type
+        Boolean mfaEnforced
+    }
+
+    PasswordPolicy {
+        String id PK
+        String organizationId FK
+        String name
+        Boolean isDefault
     }
 
     User {
         String id PK
         String email
-        String passwordHash
+        String loginPassword
         String publicKey
         String encryptedPrivateKey
-        String salt
         String role
         String status
         String organizationId FK
+    }
+
+    RefreshToken {
+        String id PK
+        String userId FK
+        String tokenHash
+        DateTime expiresAt
+    }
+
+    Invitation {
+        String id PK
+        String email
+        String organizationId FK
+        String role
+        String status
     }
 
     Group {
@@ -71,13 +92,32 @@ erDiagram
         String permission
     }
 
+    ThirdPartyInvite {
+        String id PK
+        String secretId FK
+        String email
+        String permission
+        String status
+    }
+
     Attachment {
         String id PK
         String secretId FK
         String originalName
         String mimeType
         Int size
-        String encryptedFileKey
+        String encryptedBlobPath
+    }
+
+    AccessControlConfig {
+        String id PK
+        String secretId FK
+        Int minimumApproverCount
+    }
+
+    AccessControlApprover {
+        String configId FK
+        String userId FK
     }
 
     AccessRequest {
@@ -106,30 +146,83 @@ erDiagram
 
     AuditLog {
         String id PK
-        String eventType
-        String actorId FK
-        String targetId
+        String action
+        String userId FK
+        String resourceType
         String organizationId FK
-        Json metadata
         DateTime createdAt
     }
 
-    AlertRule {
+    NotificationRule {
         String id PK
         String organizationId FK
-        String eventType
-        String timing
-        Boolean enabled
+        String name
+        String recipientType
+        Boolean isEnabled
+    }
+
+    NotificationRecipient {
+        String ruleId FK
+        String userId FK
+    }
+
+    FineGrainedControl {
+        String id PK
+        String organizationId FK
+        String action
+        Boolean isEnabled
+    }
+
+    FineGrainedControlExemption {
+        String controlId FK
+        String userId FK
+    }
+
+    SAMLApp {
+        String id PK
+        String organizationId FK
+        String name
+        String acsUrl
+    }
+
+    SAMLAppAccess {
+        String id PK
+        String appId FK
+        String userId FK
+    }
+
+    BackupConfig {
+        String id PK
+        String userId FK
+        String provider
+        String frequency
+    }
+
+    ReportCache {
+        String id PK
+        String organizationId FK
+        String data
     }
 
     Organization ||--o{ User : "has"
     Organization ||--o{ Group : "has"
     Organization ||--o{ AuditLog : "tracks"
-    Organization ||--o{ AlertRule : "configures"
+    Organization ||--o{ NotificationRule : "configures"
+    Organization ||--o{ FineGrainedControl : "enforces"
+    Organization ||--o{ SAMLApp : "configures"
+    Organization ||--o| ReportCache : "caches"
+    Organization ||--o{ PasswordPolicy : "defines"
+    Organization ||--o{ Invitation : "issues"
+
+    NotificationRule ||--o{ NotificationRecipient : "targets"
+    FineGrainedControl ||--o{ FineGrainedControlExemption : "exempts"
+    SAMLApp ||--o{ SAMLAppAccess : "grants access to"
 
     User ||--o{ GroupMember : "belongs to"
     Group ||--o{ GroupMember : "contains"
     
+    User ||--o{ RefreshToken : "authenticates via"
+    User ||--o{ BackupConfig : "configures backup"
     User ||--o{ Folder : "owns"
     User ||--o{ Secret : "owns"
     
@@ -138,8 +231,12 @@ erDiagram
 
     Secret ||--o{ SecretVersion : "tracks history of"
     Secret ||--o{ Share : "is shared via"
+    Secret ||--o{ ThirdPartyInvite : "shared externally via"
     Secret ||--o{ Attachment : "has files"
+    Secret ||--o| AccessControlConfig : "protected by"
     Secret ||--o{ AccessRequest : "is requested via"
+
+    AccessControlConfig ||--o{ AccessControlApprover : "requires approval from"
 
     User ||--o{ Share : "receives"
     Group ||--o{ Share : "receives"

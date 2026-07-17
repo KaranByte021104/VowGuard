@@ -84,6 +84,7 @@ npm run test:e2e
 ## Reconciliations (TRD vs Implementation)
 - **Security Check:** Rate limits (100 req/min global, 5/15m login) and CSRF (double-submit) are strictly implemented.
 - **Data Encryption:** Argon2id is used for key derivation on the client, and all vault data is encrypted via WebCrypto (AES-GCM) prior to network transmission.
+- **UI/UX Redesign:** Completed a comprehensive frontend UI/UX overhaul in Sprint 15.
 
 ---
-*Built incrementally over 15 Sprints (0-14).*
+*Built incrementally over 16 Sprints (0-15).*

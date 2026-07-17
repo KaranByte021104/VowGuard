@@ -33,8 +33,10 @@ flowchart TD
     subgraph External ["External Services"]
         Mail["SMTP Email Service"]
         IdP["SAML Provider"]
+        Storage["Cloud Storage Provider (Backups)"]
     end
 
     Jobs -->|Alerts / Invites| Mail
     Auth <-->|SSO Flow| IdP
+    Jobs -->|Encrypted Backups| Storage
 ```
