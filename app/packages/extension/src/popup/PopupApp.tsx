@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Unlock, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import { Shield, Lock, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { deriveKey, decryptPrivateKey } from '@app/shared/src/crypto';
 
 export function PopupApp() {
@@ -166,11 +166,66 @@ export function PopupApp() {
     }
   };
 
+  const [activeTab, setActiveTab] = useState<'vault' | 'generator'>('vault');
+  const [secrets, setSecrets] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [genLength, setGenLength] = useState(16);
+  const [genSymbols, setGenSymbols] = useState(true);
+  const [genNumbers, setGenNumbers] = useState(true);
+  const [generatedPassword, setGeneratedPassword] = useState('');
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const fetchSecrets = () => {
+    chrome.runtime.sendMessage({ type: 'GET_ALL_SECRETS' }, (res) => {
+      if (res && res.success) {
+        setSecrets(res.secrets);
+      }
+    });
+  };
+
+  useEffect(() => {
+    if (session?.isUnlocked) {
+      fetchSecrets();
+    }
+  }, [session?.isUnlocked]);
+
+  const handleCopy = (text: string, type: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(type);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const handleLaunch = (domain: string) => {
+    let url = domain;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    window.open(url, '_blank');
+  };
+
+  const generatePassword = () => {
+    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' + 
+      (genNumbers ? '0123456789' : '') + 
+      (genSymbols ? '!@#$%^&*()_+~`|}{[]:;?><,./-=' : '');
+    let pwd = '';
+    const array = new Uint32Array(genLength);
+    window.crypto.getRandomValues(array);
+    for (let i = 0; i < genLength; i++) {
+      pwd += charset[array[i] % charset.length];
+    }
+    setGeneratedPassword(pwd);
+  };
+
   if (loading) return <div className="p-4 text-center">Loading...</div>;
 
   if (session?.isUnlocked) {
+    const filteredSecrets = secrets.filter(s => 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (s.domain && s.domain.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
     return (
-      <div className="flex flex-col h-full bg-background text-foreground">
+      <div className="flex flex-col h-full bg-background text-foreground h-[500px]">
         <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2">
             <Shield className="w-5 h-5" />
@@ -182,18 +237,134 @@ export function PopupApp() {
             <Lock className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-6 flex-1 flex flex-col items-center justify-center text-center">
-          <Unlock className="w-12 h-12 text-status-success mb-4" />
-          <h2 className="text-lg font-semibold mb-1">Vault Unlocked</h2>
-          <p className="text-sm text-muted-foreground mb-6">{session.user?.email}</p>
-          
-          <p className="text-sm text-muted-foreground mb-4">
-            Autofill is active for matching domains.
-          </p>
+
+        <div className="flex border-b border-border bg-card">
+          <button 
+            className={`flex-1 py-2 text-sm font-medium ${activeTab === 'vault' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            onClick={() => setActiveTab('vault')}
+          >
+            Vault
+          </button>
+          <button 
+            className={`flex-1 py-2 text-sm font-medium ${activeTab === 'generator' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            onClick={() => setActiveTab('generator')}
+          >
+            Generator
+          </button>
         </div>
-        <div className="p-4 border-t border-border bg-card">
-          <a href="http://localhost:5173" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 text-sm font-medium text-primary hover:underline">
-            Open Web Vault <ExternalLink className="w-4 h-4" />
+
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {activeTab === 'vault' ? (
+            <>
+              <div className="p-3 bg-card border-b border-border">
+                <input 
+                  type="text" 
+                  placeholder="Search vault..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-background border border-input rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                {secrets.length === 0 ? (
+                  <div className="text-center p-4 text-muted-foreground text-sm mt-4">
+                    Loading or no secrets found.
+                  </div>
+                ) : filteredSecrets.length === 0 ? (
+                  <div className="text-center p-4 text-muted-foreground text-sm mt-4">
+                    No secrets match your search.
+                  </div>
+                ) : (
+                  filteredSecrets.map(secret => (
+                    <div key={secret.id} className="bg-card border border-border rounded-md p-3 shadow-sm hover:border-primary/50 transition-colors">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="truncate pr-2">
+                          <h3 className="font-semibold text-sm truncate">{secret.name}</h3>
+                          <p className="text-xs text-muted-foreground truncate">{secret.username}</p>
+                        </div>
+                        {secret.domain && (
+                          <button onClick={() => handleLaunch(secret.domain)} className="text-muted-foreground hover:text-primary transition-colors flex-shrink-0" title="Launch Website">
+                            <ExternalLink className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button 
+                          onClick={() => handleCopy(secret.username, `user-${secret.id}`)}
+                          className="flex-1 bg-secondary text-secondary-foreground text-xs py-1.5 rounded font-medium hover:opacity-90 transition-opacity"
+                        >
+                          {copied === `user-${secret.id}` ? 'Copied!' : 'Copy User'}
+                        </button>
+                        <button 
+                          onClick={() => handleCopy(secret.password, `pass-${secret.id}`)}
+                          className="flex-1 bg-primary text-primary-foreground text-xs py-1.5 rounded font-medium hover:opacity-90 transition-opacity"
+                        >
+                          {copied === `pass-${secret.id}` ? 'Copied!' : 'Copy Pass'}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="p-4 space-y-6 flex-1 overflow-y-auto">
+              <div className="bg-card border border-border rounded-md p-4 space-y-4">
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value={generatedPassword}
+                    placeholder="Click generate"
+                    className="w-full bg-background border border-input rounded-md px-3 py-2 text-sm pr-20 font-mono"
+                  />
+                  <button 
+                    onClick={() => handleCopy(generatedPassword, 'gen')}
+                    disabled={!generatedPassword}
+                    className="absolute right-1 top-1 bottom-1 bg-secondary text-secondary-foreground text-xs px-2 rounded font-medium hover:opacity-90 disabled:opacity-50"
+                  >
+                    {copied === 'gen' ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                
+                <button 
+                  onClick={generatePassword}
+                  className="w-full bg-primary text-primary-foreground py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  Generate Password
+                </button>
+              </div>
+
+              <div className="space-y-4 px-2">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-sm">
+                    <label>Length</label>
+                    <span className="font-mono text-primary font-bold">{genLength}</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="8" max="64" 
+                    value={genLength} 
+                    onChange={e => setGenLength(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm">Include Numbers</label>
+                  <input type="checkbox" checked={genNumbers} onChange={e => setGenNumbers(e.target.checked)} className="h-4 w-4" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm">Include Symbols</label>
+                  <input type="checkbox" checked={genSymbols} onChange={e => setGenSymbols(e.target.checked)} className="h-4 w-4" />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-3 border-t border-border bg-card">
+          <a href="http://localhost:5173" target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground">
+            Open Web Vault <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>
       </div>

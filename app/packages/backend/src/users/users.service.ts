@@ -19,10 +19,16 @@ export class UsersService {
     });
   }
 
-  async updateRole(organizationId: string, targetUserId: string, newRole: string) {
+  async updateRole(organizationId: string, targetUserId: string, newRole: string, requesterRole?: string) {
     const targetUser = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!targetUser || targetUser.organizationId !== organizationId) {
       throw new BadRequestException('User not found in organization');
+    }
+
+    if (requesterRole === 'ADMIN') {
+      if (targetUser.role === 'SUPER_ADMIN' || newRole === 'SUPER_ADMIN') {
+        throw new UnauthorizedException('Admins cannot manage Super Admin roles');
+      }
     }
 
     // BR-9: Block demoting or removing the organization's last Super Admin
@@ -44,10 +50,14 @@ export class UsersService {
     });
   }
 
-  async removeUser(organizationId: string, targetUserId: string) {
+  async removeUser(organizationId: string, targetUserId: string, requesterRole?: string) {
     const targetUser = await this.prisma.user.findUnique({ where: { id: targetUserId } });
     if (!targetUser || targetUser.organizationId !== organizationId) {
       throw new BadRequestException('User not found in organization');
+    }
+
+    if (requesterRole === 'ADMIN' && targetUser.role === 'SUPER_ADMIN') {
+      throw new UnauthorizedException('Admins cannot remove Super Admins');
     }
 
     // BR-9: Block removing the organization's last Super Admin
@@ -79,10 +89,22 @@ export class UsersService {
     });
   }
 
-  async updateProfile(userId: string, name: string, email: string) {
+  async updateOrganizationName(organizationId: string, name: string) {
+    return this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { name },
+      select: { id: true, name: true, type: true }
+    });
+  }
+
+  async updateProfile(userId: string, name: string, email: string, encryptedPrivateKey?: string) {
+    const data: any = { name, email };
+    if (encryptedPrivateKey) {
+      data.encryptedPrivateKey = encryptedPrivateKey;
+    }
     return this.prisma.user.update({
       where: { id: userId },
-      data: { name, email },
+      data,
       select: { id: true, name: true, email: true, avatarUrl: true, role: true }
     });
   }

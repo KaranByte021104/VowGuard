@@ -18,42 +18,42 @@ export class SsoController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @Post('apps')
   async createApp(@Req() req, @Body() data: { name: string; description?: string; acsUrl: string; audienceUri: string; }) {
     return this.ssoService.createSamlApp(req.user.organizationId, data);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @Get('apps')
   async getApps(@Req() req) {
     return this.ssoService.getSamlApps(req.user.organizationId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @Get('apps/:id')
   async getApp(@Req() req, @Param('id') id: string) {
     return this.ssoService.getSamlApp(id, req.user.organizationId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @Put('apps/:id')
   async updateApp(@Req() req, @Param('id') id: string, @Body() data: any) {
     return this.ssoService.updateSamlApp(id, req.user.organizationId, data);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @Post('apps/:id/access/:userId')
   async grantAccess(@Req() req, @Param('id') id: string, @Param('userId') userId: string) {
     return this.ssoService.grantAccess(id, userId, req.user.organizationId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.SUPER_ADMIN)
   @Delete('apps/:id/access/:userId')
   async revokeAccess(@Req() req, @Param('id') id: string, @Param('userId') userId: string) {
     return this.ssoService.revokeAccess(id, userId, req.user.organizationId);

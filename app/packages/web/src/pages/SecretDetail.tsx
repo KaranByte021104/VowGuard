@@ -56,6 +56,7 @@ export function SecretDetail() {
   const [decryptedVersions, setDecryptedVersions] = useState<
     Record<string, any>
   >({});
+  const [revealedVersions, setRevealedVersions] = useState<Record<string, boolean>>({});
   const [previewAttachment, setPreviewAttachment] = useState<{
     id: string;
     type: string;
@@ -1281,11 +1282,22 @@ export function SecretDetail() {
                               <span className="font-medium text-gray-500 dark:text-gray-400">
                                 Password:
                               </span>
-                              <span>
-                                {decryptedVersions[v.id].password
-                                  ? "********"
-                                  : "-"}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span>
+                                  {decryptedVersions[v.id].password
+                                    ? (revealedVersions[v.id] ? decryptedVersions[v.id].password : "********")
+                                    : "-"}
+                                </span>
+                                {decryptedVersions[v.id].password && (
+                                  <button
+                                    onClick={() => setRevealedVersions(prev => ({ ...prev, [v.id]: !prev[v.id] }))}
+                                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    title={revealedVersions[v.id] ? "Hide Password" : "Show Password"}
+                                  >
+                                    {revealedVersions[v.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}

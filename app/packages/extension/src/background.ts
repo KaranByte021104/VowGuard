@@ -5,6 +5,45 @@ import { importPublicKey, encryptSecretPayload, decryptSecretPayload, decryptIte
 let sessionKeys: { privateKey: CryptoKey, publicKey: CryptoKey } | null = null;
 let sessionUser: any = null;
 
+async function restoreSession() {
+  if (sessionKeys) return true;
+  const data = await chrome.storage.session.get('vowGuardSession');
+  if (data.vowGuardSession) {
+    const { email, exportedPrivateKeyBase64, publicKeyBase64 } = data.vowGuardSession;
+    
+    const base64ToArrayBuffer = (base64: string) => {
+      const binaryString = self.atob(base64);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes.buffer;
+    };
+
+    try {
+      const pkcs8Buffer = base64ToArrayBuffer(exportedPrivateKeyBase64);
+      const privateKey = await crypto.subtle.importKey(
+        'pkcs8',
+        pkcs8Buffer,
+        { name: 'RSA-OAEP', hash: 'SHA-256' },
+        true,
+        ['decrypt']
+      );
+      
+      const publicKey = await importPublicKey(base64ToArrayBuffer(publicKeyBase64));
+      
+      sessionKeys = { privateKey, publicKey };
+      sessionUser = { email };
+      return true;
+    } catch (e) {
+      console.error('Failed to restore session keys', e);
+      return false;
+    }
+  }
+  return false;
+}
+
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === 'UNLOCK') {
     handleUnlock(request.email, request.exportedPrivateKeyBase64, request.publicKey)
@@ -14,109 +53,174 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   }
   
   if (request.type === 'GET_SESSION') {
-    sendResponse({ 
-      isUnlocked: sessionKeys !== null, 
-      user: sessionUser 
+    restoreSession().then(hasSession => {
+      sendResponse({ 
+        isUnlocked: hasSession, 
+        user: sessionUser 
+      });
     });
-    return false;
+    return true;
   }
   
   if (request.type === 'LOCK') {
     sessionKeys = null;
     sessionUser = null;
-    sendResponse({ success: true });
-    return false;
+    chrome.storage.session.remove('vowGuardSession').then(() => {
+      sendResponse({ success: true });
+    });
+    return true;
   }
 
   if (request.type === 'CHECK_CREDENTIALS') {
-    if (!sessionKeys) {
-      sendResponse({ hasCredentials: false, error: 'Locked' });
-      return false;
-    }
-    
-    // Exact origin matching
-    const origin = request.origin; 
-    
-    // Fetch from localhost API directly since we share cookies
-    fetch('http://localhost:3000/secrets', { credentials: 'include' })
-      .then(res => res.json())
-      .then(async secrets => {
-        const normalize = (d: string) => {
-          if (!d) return '';
-          let n = d.toLowerCase();
-          if (n.startsWith('http://')) n = n.substring(7);
-          if (n.startsWith('https://')) n = n.substring(8);
-          if (n.startsWith('www.')) n = n.substring(4);
-          if (n.endsWith('/')) n = n.slice(0, -1);
-          return n;
-        };
-        const matchingSecrets = secrets.filter((s: any) => {
-          const sDom = normalize(s.domain);
-          const oDom = normalize(origin);
-          return oDom === sDom || oDom.endsWith('.' + sDom);
-        });
-        
-        if (matchingSecrets.length > 0) {
-          // Decrypt in memory and return
-          const secret = matchingSecrets[0]; // Take first match for simple autofill
-          try {
-            const base64ToArrayBuffer = (base64: string) => {
-              const binaryString = self.atob(base64);
-              const len = binaryString.length;
-              const bytes = new Uint8Array(len);
-              for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+    restoreSession().then(hasSession => {
+      if (!hasSession) {
+        sendResponse({ hasCredentials: false, error: 'Locked' });
+        return;
+      }
+      
+      const origin = request.origin; 
+      
+      fetch('http://localhost:3000/secrets', { credentials: 'include' })
+        .then(res => res.json())
+        .then(async secrets => {
+          const normalize = (d: string) => {
+            if (!d) return '';
+            let n = d.toLowerCase();
+            if (n.startsWith('http://')) n = n.substring(7);
+            if (n.startsWith('https://')) n = n.substring(8);
+            if (n.startsWith('www.')) n = n.substring(4);
+            if (n.endsWith('/')) n = n.slice(0, -1);
+            return n;
+          };
+          const matchingSecrets = secrets.filter((s: any) => {
+            const sDom = normalize(s.domain);
+            const oDom = normalize(origin);
+            return oDom === sDom || oDom.endsWith('.' + sDom);
+          });
+          
+          if (matchingSecrets.length > 0) {
+            const secret = matchingSecrets[0];
+            try {
+              const base64ToArrayBuffer = (base64: string) => {
+                const binaryString = self.atob(base64);
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                  bytes[i] = binaryString.charCodeAt(i);
+                }
+                return bytes.buffer;
+              };
+
+              let targetItemKeyBase64 = secret.encryptedItemKey;
+              if (secret.shares && secret.shares.length > 0) {
+                targetItemKeyBase64 = secret.shares[0].encryptedItemKey;
+              } else if (secret.accessRequests && secret.accessRequests.length > 0 && secret.accessRequests[0].encryptedItemKey) {
+                targetItemKeyBase64 = secret.accessRequests[0].encryptedItemKey;
               }
-              return bytes.buffer;
-            };
 
-            let targetItemKeyBase64 = secret.encryptedItemKey;
-            if (secret.shares && secret.shares.length > 0) {
-              targetItemKeyBase64 = secret.shares[0].encryptedItemKey;
-            } else if (secret.accessRequests && secret.accessRequests.length > 0 && secret.accessRequests[0].encryptedItemKey) {
-              targetItemKeyBase64 = secret.accessRequests[0].encryptedItemKey;
+              const itemKeyEncrypted = base64ToArrayBuffer(targetItemKeyBase64);
+              const itemKey = await decryptItemKeyWithPrivateKey(itemKeyEncrypted, sessionKeys!.privateKey);
+              
+              const iv = new Uint8Array(base64ToArrayBuffer(secret.iv));
+              const data = base64ToArrayBuffer(secret.encryptedData);
+              
+              const decryptedObj = await decryptSecretPayload(data, iv, itemKey);
+              
+              sendResponse({ 
+                hasCredentials: true, 
+                credentials: {
+                  username: decryptedObj.username,
+                  password: decryptedObj.password
+                }
+              });
+            } catch (e) {
+              console.error('Decryption failed', e);
+              sendResponse({ hasCredentials: false, error: 'Decryption failed' });
             }
+          } else {
+            sendResponse({ hasCredentials: false });
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch secrets', err);
+          sendResponse({ hasCredentials: false, error: err.message });
+        });
+    });
+      
+    return true; // async
+  }
+  
+  if (request.type === 'GET_ALL_SECRETS') {
+    restoreSession().then(hasSession => {
+      if (!hasSession) {
+        sendResponse({ success: false, error: 'Locked' });
+        return;
+      }
 
-            const itemKeyEncrypted = base64ToArrayBuffer(targetItemKeyBase64);
-            const itemKey = await decryptItemKeyWithPrivateKey(itemKeyEncrypted, sessionKeys!.privateKey);
-            
-            const iv = new Uint8Array(base64ToArrayBuffer(secret.iv));
-            const data = base64ToArrayBuffer(secret.encryptedData);
-            
-            const decryptedObj = await decryptSecretPayload(data, iv, itemKey);
-            
-            sendResponse({ 
-              hasCredentials: true, 
-              credentials: {
+      fetch('http://localhost:3000/secrets', { credentials: 'include' })
+        .then(res => res.json())
+        .then(async secrets => {
+          const decryptedSecrets = [];
+          const base64ToArrayBuffer = (base64: string) => {
+            const binaryString = self.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+          };
+
+          for (const secret of secrets) {
+            try {
+              let targetItemKeyBase64 = secret.encryptedItemKey;
+              if (secret.shares && secret.shares.length > 0) {
+                targetItemKeyBase64 = secret.shares[0].encryptedItemKey;
+              } else if (secret.accessRequests && secret.accessRequests.length > 0 && secret.accessRequests[0].encryptedItemKey) {
+                targetItemKeyBase64 = secret.accessRequests[0].encryptedItemKey;
+              }
+
+              const itemKeyEncrypted = base64ToArrayBuffer(targetItemKeyBase64);
+              const itemKey = await decryptItemKeyWithPrivateKey(itemKeyEncrypted, sessionKeys!.privateKey);
+              
+              const iv = new Uint8Array(base64ToArrayBuffer(secret.iv));
+              const data = base64ToArrayBuffer(secret.encryptedData);
+              
+              const decryptedObj = await decryptSecretPayload(data, iv, itemKey);
+              
+              decryptedSecrets.push({
+                id: secret.id,
+                name: secret.name,
+                domain: secret.domain,
                 username: decryptedObj.username,
                 password: decryptedObj.password
-              }
-            });
-          } catch (e) {
-            console.error('Decryption failed', e);
-            sendResponse({ hasCredentials: false, error: 'Decryption failed' });
+              });
+            } catch (e) {
+              console.error('Failed to decrypt a secret', e);
+            }
           }
-        } else {
-          sendResponse({ hasCredentials: false });
-        }
-      })
-      .catch(err => {
-        console.error('Failed to fetch secrets', err);
-        sendResponse({ hasCredentials: false, error: err.message });
-      });
+          
+          sendResponse({ success: true, secrets: decryptedSecrets });
+        })
+        .catch(err => {
+          sendResponse({ success: false, error: err.message });
+        });
+    });
       
     return true; // async
   }
   
   if (request.type === 'SAVE_CREDENTIAL') {
-    if (!sessionKeys) {
-      sendResponse({ success: false, error: 'Locked' });
-      return false;
-    }
-    
-    handleSaveCredential(request.origin, request.username, request.password)
-      .then(() => sendResponse({ success: true }))
-      .catch(err => sendResponse({ success: false, error: err.message }));
+    restoreSession().then(hasSession => {
+      if (!hasSession) {
+        sendResponse({ success: false, error: 'Locked' });
+        return;
+      }
+      
+      handleSaveCredential(request.origin, request.username, request.password)
+        .then(() => sendResponse({ success: true }))
+        .catch(err => sendResponse({ success: false, error: err.message }));
+    });
       
     return true; // async
   }
@@ -146,6 +250,15 @@ async function handleUnlock(email: string, exportedPrivateKeyBase64: string, pub
   
   sessionKeys = { privateKey, publicKey };
   sessionUser = { email };
+  
+  await chrome.storage.session.set({
+    vowGuardSession: {
+      email,
+      exportedPrivateKeyBase64,
+      publicKeyBase64
+    }
+  });
+  
   return true;
 }
 

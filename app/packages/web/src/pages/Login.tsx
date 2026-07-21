@@ -93,7 +93,12 @@ export function Login() {
       });
 
       if (!response.ok) {
-        throw new Error('Invalid MFA token');
+        let errStr = 'Invalid MFA token';
+        try {
+          const errData = await response.json();
+          errStr = errData.message || errStr;
+        } catch(e) {}
+        throw new Error(errStr);
       }
 
       const data = await response.json();
@@ -224,17 +229,19 @@ export function Login() {
                   <Label>Email</Label>
                   <Input name="email" type="email" value={formData.email} required onChange={handleChange} />
                 </div>
-                <div className="space-y-1 relative">
+                <div className="space-y-1">
                   <div className="flex items-center justify-between">
                     <Label>Login Password</Label>
                     <button type="button" onClick={() => setStep(3)} className="text-sm font-medium text-primary hover:underline">
                       Forgot Password?
                     </button>
                   </div>
-                  <Input name="loginPassword" value={formData.loginPassword} type={showLoginPassword ? "text" : "password"} required className="pr-10" onChange={handleChange} />
-                  <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute bottom-2 right-3 flex items-center text-muted-foreground hover:text-foreground">
-                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="relative">
+                    <Input name="loginPassword" value={formData.loginPassword} type={showLoginPassword ? "text" : "password"} required className="pr-10" onChange={handleChange} />
+                    <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute inset-y-0 right-3 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                      {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? 'Signing in...' : 'Sign in'}
@@ -263,12 +270,14 @@ export function Login() {
               </>
             ) : step === 2 ? (
               <>
-                <div className="space-y-1 relative">
+                <div className="space-y-1">
                   <Label>Master Password</Label>
-                  <Input name="masterPassword" value={formData.masterPassword} type={showMasterPassword ? "text" : "password"} required className="pr-10" onChange={handleChange} />
-                  <button type="button" onClick={() => setShowMasterPassword(!showMasterPassword)} className="absolute bottom-2 right-3 flex items-center text-muted-foreground hover:text-foreground">
-                    {showMasterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="relative">
+                    <Input name="masterPassword" value={formData.masterPassword} type={showMasterPassword ? "text" : "password"} required className="pr-10" onChange={handleChange} />
+                    <button type="button" onClick={() => setShowMasterPassword(!showMasterPassword)} className="absolute inset-y-0 right-3 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                      {showMasterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full">
                   {loading ? 'Unlocking...' : 'Unlock VowGuard'}
@@ -301,12 +310,14 @@ export function Login() {
                   <Label>Reset Token</Label>
                   <Input name="resetToken" type="text" value={formData.resetToken} required className="font-mono text-sm" onChange={handleChange} placeholder="Paste your 64-character token here" />
                 </div>
-                <div className="space-y-1 relative">
+                <div className="space-y-1">
                   <Label>New Login Password</Label>
-                  <Input name="newPassword" value={formData.newPassword} type={showLoginPassword ? "text" : "password"} required className="pr-10" onChange={handleChange} />
-                  <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute bottom-2 right-3 flex items-center text-muted-foreground hover:text-foreground">
-                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="relative">
+                    <Input name="newPassword" value={formData.newPassword} type={showLoginPassword ? "text" : "password"} required className="pr-10" onChange={handleChange} />
+                    <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute inset-y-0 right-3 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                      {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <Button type="button" onClick={handleResetPassword} disabled={loading} className="w-full">
                   {loading ? 'Resetting...' : 'Confirm New Password'}

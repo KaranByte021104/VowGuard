@@ -36,10 +36,17 @@ export function Navigation() {
     <div className={cn("bg-card border-r border-border h-screen flex flex-col shadow-sm z-10 relative transition-all duration-300", isCollapsed ? "w-16" : "w-64")}>
       <div className={cn("p-4 border-b border-border flex items-center h-16", isCollapsed ? "justify-center" : "justify-between")}>
         {!isCollapsed && (
-          <h1 className="text-xl font-bold text-foreground flex items-center gap-2 tracking-tight overflow-hidden whitespace-nowrap">
-            <Shield className="w-6 h-6 text-primary flex-shrink-0" />
-            VowGuard
-          </h1>
+          <div className="flex flex-col overflow-hidden">
+            <h1 className="text-xl font-bold text-foreground flex items-center gap-2 tracking-tight whitespace-nowrap">
+              <Shield className="w-6 h-6 text-primary flex-shrink-0" />
+              VowGuard
+            </h1>
+            {user?.organizationName && (
+              <span className="text-xs text-muted-foreground ml-8 truncate">
+                {user.organizationName}
+              </span>
+            )}
+          </div>
         )}
         <button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted flex-shrink-0 transition-colors">
           <Menu className="w-5 h-5" />

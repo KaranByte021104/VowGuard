@@ -4,6 +4,7 @@ import { Shield, Eye, EyeOff } from 'lucide-react';
 import { deriveKey, generateKeyPair, encryptPrivateKey, exportPublicKey } from '@app/shared/src/crypto';
 import { useSessionStore } from '../store/session';
 import { apiFetch } from '../lib/apiFetch';
+import zxcvbn from "zxcvbn";
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -146,6 +147,9 @@ export function Signup() {
     }
   };
 
+  const loginPasswordScore = zxcvbn(formData.loginPassword || "").score;
+  const masterPasswordScore = zxcvbn(formData.masterPassword || "").score;
+
   if (inviteToken && inviteError) {
     return (
       <div className="min-h-screen bg-background flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -190,12 +194,32 @@ export function Signup() {
                   <Label>Email Address</Label>
                   <Input name="email" value={formData.email} type="email" required disabled={isInviteFlow} className={isInviteFlow ? 'bg-muted' : ''} onChange={handleChange} />
                 </div>
-                <div className="space-y-1 relative">
+                <div className="space-y-1">
                   <Label>Login Password</Label>
-                  <Input name="loginPassword" value={formData.loginPassword} type={showLoginPassword ? "text" : "password"} required className="pr-10" onChange={handleChange} />
-                  <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute bottom-2 right-3 flex items-center text-muted-foreground hover:text-foreground">
-                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="relative">
+                    <Input name="loginPassword" value={formData.loginPassword} type={showLoginPassword ? "text" : "password"} required className={`pr-10 ${formData.loginPassword ? (loginPasswordScore < 3 ? "border-status-danger focus-visible:ring-status-danger" : "border-status-success focus-visible:ring-status-success") : ""}`} onChange={handleChange} />
+                    <button type="button" onClick={() => setShowLoginPassword(!showLoginPassword)} className="absolute inset-y-0 right-3 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                      {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {formData.loginPassword && (
+                    <div className="flex gap-1 mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      {[...Array(4)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-full flex-1 transition-all ${
+                            i < loginPasswordScore
+                              ? loginPasswordScore < 3
+                                ? "bg-status-danger"
+                                : loginPasswordScore === 3
+                                  ? "bg-status-warning"
+                                  : "bg-status-success"
+                              : "bg-transparent"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <Button type="submit" className="w-full">
                   Next Step
@@ -206,12 +230,32 @@ export function Signup() {
                 <div className="text-sm text-muted-foreground mb-4">
                   Your Master Password encrypts your vault. The server never sees this password and cannot recover it if lost.
                 </div>
-                <div className="space-y-1 relative">
+                <div className="space-y-1">
                   <Label>Master Password</Label>
-                  <Input name="masterPassword" value={formData.masterPassword} type={showPassword ? "text" : "password"} required className="pr-10" onChange={handleChange} />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute bottom-2 right-3 flex items-center text-muted-foreground hover:text-foreground">
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  <div className="relative">
+                    <Input name="masterPassword" value={formData.masterPassword} type={showPassword ? "text" : "password"} required className={`pr-10 ${formData.masterPassword ? (masterPasswordScore < 3 ? "border-status-danger focus-visible:ring-status-danger" : "border-status-success focus-visible:ring-status-success") : ""}`} onChange={handleChange} />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-3 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {formData.masterPassword && (
+                    <div className="flex gap-1 mt-2 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      {[...Array(4)].map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-full flex-1 transition-all ${
+                            i < masterPasswordScore
+                              ? masterPasswordScore < 3
+                                ? "bg-status-danger"
+                                : masterPasswordScore === 3
+                                  ? "bg-status-warning"
+                                  : "bg-status-success"
+                              : "bg-transparent"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-start">
                   <div className="flex items-center h-5">

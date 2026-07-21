@@ -14,6 +14,8 @@ export function EmergencyAccess() {
   const [users, setUsers] = useState<any[]>([]);
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
+  const [contactToRemove, setContactToRemove] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [waitingHours, setWaitingHours] = useState(24);
   const [validityHours, setValidityHours] = useState(48);
@@ -27,6 +29,7 @@ export function EmergencyAccess() {
     // Setup polling for status updates (e.g., from PENDING to ACTIVE via BullMQ worker)
     const interval = setInterval(() => {
       fetchReceivedGrants();
+      fetchContacts();
     }, 5000);
 
     return () => clearInterval(interval);
@@ -262,7 +265,10 @@ export function EmergencyAccess() {
 
                   <div className="mt-4 flex justify-end border-t border-gray-100 dark:border-gray-700 pt-4">
                     <button 
-                      onClick={() => handleRemoveContact(grant.id)}
+                      onClick={() => {
+                        setContactToRemove(grant.id);
+                        setIsRemoveModalOpen(true);
+                      }}
                       className="text-red-600 hover:text-red-900 text-sm font-medium flex items-center gap-1"
                     >
                       <Trash2 className="w-4 h-4" /> Remove
@@ -404,6 +410,44 @@ export function EmergencyAccess() {
               className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
             >
               {isLoading ? 'Encrypting...' : 'Designate Contact'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal 
+        isOpen={isRemoveModalOpen} 
+        onClose={() => {
+          setIsRemoveModalOpen(false);
+          setContactToRemove(null);
+        }} 
+        title="Remove Emergency Contact"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            Are you sure you want to remove this emergency contact? They will no longer be able to request access to your vault.
+          </p>
+          <div className="pt-4 flex justify-end gap-3">
+            <button 
+              onClick={() => {
+                setIsRemoveModalOpen(false);
+                setContactToRemove(null);
+              }}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg dark:hover:bg-gray-700"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={() => {
+                if (contactToRemove) {
+                  handleRemoveContact(contactToRemove);
+                }
+                setIsRemoveModalOpen(false);
+                setContactToRemove(null);
+              }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Remove
             </button>
           </div>
         </div>

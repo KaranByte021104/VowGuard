@@ -7,6 +7,7 @@ export interface User {
   avatarUrl?: string;
   role: string;
   organizationId: string;
+  organizationName?: string;
   publicKey?: string; // base64 SPKI
   encryptedPrivateKey?: string;
   mfaEnabled?: boolean;

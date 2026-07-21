@@ -1,36 +1,93 @@
 import React, { useState } from 'react';
 import { useSessionStore } from '../store/session';
 import { apiFetch } from '../lib/apiFetch';
-import { Shield, Save, Upload } from 'lucide-react';
+import { Shield, Save, Upload, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import { Modal } from '../components/Modal';
+import { deriveKey } from '@app/shared/src/crypto';
 
 export function Profile() {
-  const { user, setUser } = useSessionStore();
+  const { user, setUser, privateKey } = useSessionStore();
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [masterPassword, setMasterPassword] = useState('');
+  const [showMasterPassword, setShowMasterPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  // General Profile State
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
 
+  // Organization State
+  const [organizationName, setOrganizationName] = useState(user?.organizationName || '');
+  const [isSubmittingOrg, setIsSubmittingOrg] = useState(false);
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (email !== user?.email) {
+      setIsConfirmModalOpen(true);
+      return;
+    }
+    submitProfileUpdate();
+  };
+
+  const submitProfileUpdate = async (encryptedPrivateKey?: string) => {
     setMessage('');
     setError('');
+    setIsSubmitting(true);
     try {
+      const payload: any = { name, email };
+      if (encryptedPrivateKey) {
+        payload.encryptedPrivateKey = encryptedPrivateKey;
+      }
       const res = await apiFetch('http://localhost:3000/users/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error('Failed to update profile');
       const data = await res.json();
       setUser({ ...user!, name: data.name, email: data.email });
       setMessage('Profile updated successfully');
+      setIsConfirmModalOpen(false);
+      setMasterPassword('');
     } catch (err: any) {
       setError(err.message || 'An error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmMasterPassword = async () => {
+    if (!masterPassword) return;
+    setError('');
+    setIsSubmitting(true);
+    try {
+      if (!privateKey) throw new Error("Private key not found in session.");
+      
+      const newDerivedKey = await deriveKey(masterPassword, email);
+      
+      const pkcs8 = await window.crypto.subtle.exportKey('pkcs8', privateKey);
+      const privateKeyBytes = new Uint8Array(pkcs8);
+
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const encryptedPkcs8 = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        newDerivedKey,
+        privateKeyBytes
+      );
+      
+      const ivBlob = btoa(String.fromCharCode(...iv));
+      const dataBlob = btoa(String.fromCharCode(...new Uint8Array(encryptedPkcs8)));
+      const newEncryptedPrivateKey = `${ivBlob}:${dataBlob}`;
+
+      await submitProfileUpdate(newEncryptedPrivateKey);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to re-encrypt vault. Make sure the master password is correct.");
+      setIsSubmitting(false);
     }
   };
 
@@ -55,6 +112,31 @@ export function Profile() {
       setMessage('Profile picture updated');
     } catch (err: any) {
       setError(err.message || 'An error occurred');
+    }
+  };
+
+  const handleUpdateOrganization = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage('');
+    setError('');
+    setIsSubmittingOrg(true);
+    try {
+      const res = await apiFetch('http://localhost:3000/users/organization/name', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: organizationName }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || 'Failed to update organization');
+      }
+      const data = await res.json();
+      setUser({ ...user!, organizationName: data.name });
+      setMessage('Organization updated successfully');
+    } catch (err: any) {
+      setError(err.message || 'An error occurred');
+    } finally {
+      setIsSubmittingOrg(false);
     }
   };
 
@@ -118,13 +200,64 @@ export function Profile() {
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
-                <Button type="submit">
-                  <Save className="w-4 h-4 mr-2" /> Save Changes
+                <Button type="submit" disabled={isSubmitting}>
+                  <Save className="w-4 h-4 mr-2" /> {isSubmitting ? 'Saving...' : 'Save Changes'}
                 </Button>
               </form>
             </div>
         </div>
       </div>
+
+      {(user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN') && (
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+          <div className="p-6">
+            <h3 className="text-lg font-medium text-foreground mb-4">Organization Settings</h3>
+            <form onSubmit={handleUpdateOrganization} className="space-y-4 max-w-md">
+              <div className="space-y-1">
+                <Label>Organization Name</Label>
+                <Input
+                  type="text"
+                  value={organizationName}
+                  onChange={(e) => setOrganizationName(e.target.value)}
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={isSubmittingOrg}>
+                <Save className="w-4 h-4 mr-2" /> {isSubmittingOrg ? 'Saving...' : 'Save Organization'}
+              </Button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <Modal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} title="Confirm Master Password">
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Changing your email address requires re-encrypting your vault. Please enter your Master Password to proceed.
+          </p>
+          <div className="space-y-1">
+            <Label>Master Password</Label>
+            <div className="relative">
+              <Input
+                type={showMasterPassword ? "text" : "password"}
+                value={masterPassword}
+                onChange={(e) => setMasterPassword(e.target.value)}
+                placeholder="Enter master password"
+                className="pr-10"
+              />
+              <button type="button" onClick={() => setShowMasterPassword(!showMasterPassword)} className="absolute inset-y-0 right-3 flex items-center justify-center text-muted-foreground hover:text-foreground">
+                {showMasterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <div className="pt-4 flex justify-end gap-3">
+            <Button variant="secondary" onClick={() => setIsConfirmModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleConfirmMasterPassword} disabled={!masterPassword || isSubmitting}>
+              {isSubmitting ? 'Encrypting...' : 'Confirm'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

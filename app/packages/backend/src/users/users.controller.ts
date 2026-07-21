@@ -13,8 +13,8 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Patch('profile')
-  updateProfile(@Request() req, @Body() body: { name: string; email: string }) {
-    return this.usersService.updateProfile(req.user.id, body.name, body.email);
+  updateProfile(@Request() req, @Body() body: { name: string; email: string; encryptedPrivateKey?: string }) {
+    return this.usersService.updateProfile(req.user.id, body.name, body.email, body.encryptedPrivateKey);
   }
 
   @Post('profile-picture')
@@ -47,14 +47,14 @@ export class UsersController {
   @UseGuards(RoleGuard)
   @Roles('SUPER_ADMIN', 'ADMIN')
   updateUserRole(@Request() req, @Param('id') id: string, @Body('role') role: string) {
-    return this.usersService.updateRole(req.user.organizationId, id, role);
+    return this.usersService.updateRole(req.user.organizationId, id, role, req.user.role);
   }
 
   @Delete(':id')
   @UseGuards(RoleGuard)
   @Roles('SUPER_ADMIN', 'ADMIN')
   removeUser(@Request() req, @Param('id') id: string) {
-    return this.usersService.removeUser(req.user.organizationId, id);
+    return this.usersService.removeUser(req.user.organizationId, id, req.user.role);
   }
 
   /** Toggle org-wide MFA enforcement. SUPER_ADMIN only. */
@@ -63,5 +63,13 @@ export class UsersController {
   @Roles('SUPER_ADMIN')
   enforceMfa(@Request() req, @Body('enforce') enforce: boolean) {
     return this.usersService.enforceMfa(req.user.organizationId, enforce);
+  }
+
+  @Patch('organization/name')
+  @UseGuards(RoleGuard)
+  @Roles('SUPER_ADMIN')
+  updateOrganizationName(@Request() req, @Body('name') name: string) {
+    if (!name || name.trim() === '') throw new BadRequestException('Organization name cannot be empty');
+    return this.usersService.updateOrganizationName(req.user.organizationId, name.trim());
   }
 }
