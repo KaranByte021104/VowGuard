@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,6 +5,419 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id                  String               @id @default(uuid())
+  name                String
+  type                OrganizationType
+  mfaEnforced         Boolean              @default(false)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  samlCertificate     String?
+  samlPrivateKey      String?
+  auditLogs           AuditLog[]
+  fineGrainedControls FineGrainedControl[]
+  folders             Folder[]
+  invitations         Invitation[]
+  notificationRules   NotificationRule[]
+  policies            PasswordPolicy[]
+  reportCache         ReportCache?
+  samlApps            SAMLApp[]
+  secrets             Secret[]
+  users               User[]
+  userGroups          UserGroup[]
+}
+
+model User {
+  id                      String                        @id @default(uuid())
+  organizationId          String
+  email                   String                        @unique
+  loginPassword           String
+  publicKey               String
+  encryptedPrivateKey     String
+  role                    Role                          @default(USER)
+  status                  UserStatus                    @default(ACTIVE)
+  mfaType                 MfaType                       @default(NONE)
+  mfaSecret               String?
+  passwordResetToken      String?
+  passwordResetExpires    DateTime?
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
+  avatarUrl               String?
+  name                    String?
+  accessApprovals         AccessApproval[]
+  accessControlApprover   AccessControlApprover[]
+  accessControlExcluded   AccessControlExcludedUser[]
+  accessRequests          AccessRequest[]
+  auditLogs               AuditLog[]
+  backupConfig            BackupConfig?
+  emergencyGrantsReceived EmergencyAccessGrant[]        @relation("EmergencyContact")
+  emergencyGrantsGiven    EmergencyAccessGrant[]        @relation("EmergencyOwner")
+  controlExemptions       FineGrainedControlExemption[]
+  folders                 Folder[]
+  notificationRules       NotificationRecipient[]
+  refreshTokens           RefreshToken[]
+  samlAppAccesses         SAMLAppAccess[]
+  secrets                 Secret[]
+  sharesReceived          SecretShare[]
+  organization            Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  groupMemberships        UserGroupMember[]
+}
+
+model SAMLApp {
+  id             String          @id @default(uuid())
+  organizationId String
+  name           String
+  description    String?
+  acsUrl         String
+  audienceUri    String
+  isEnabled      Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  accesses       SAMLAppAccess[]
+}
+
+model SAMLAppAccess {
+  id        String   @id @default(uuid())
+  appId     String
+  userId    String
+  createdAt DateTime @default(now())
+  app       SAMLApp  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([appId, userId])
+}
+
+model RefreshToken {
+  id              String   @id @default(uuid())
+  tokenHash       String   @unique
+  userId          String
+  familyId        String
+  isRevoked       Boolean  @default(false)
+  replacedByToken String?
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model Invitation {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  organizationId String
+  role           Role         @default(USER)
+  tokenHash      String       @unique
+  status         InviteStatus @default(PENDING)
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model Secret {
+  id                   String               @id @default(uuid())
+  ownerId              String
+  organizationId       String
+  templateType         TemplateType
+  name                 String
+  domain               String?
+  encryptedData        String
+  iv                   String
+  encryptedItemKey     String
+  isPersonal           Boolean              @default(false)
+  accessControlEnabled Boolean              @default(false)
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  containsUsername     Boolean              @default(false)
+  isDictionaryWord     Boolean              @default(false)
+  isRecycled           Boolean              @default(false)
+  isReused             Boolean              @default(false)
+  isWeak               Boolean              @default(false)
+  passwordScore        Int                  @default(0)
+  accessControlConfig  AccessControlConfig?
+  accessRequests       AccessRequest[]
+  attachments          FileAttachment[]
+  folders              FolderSecret[]
+  organization         Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner                User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  shares               SecretShare[]
+  versions             SecretVersion[]
+  thirdPartyInvites    ThirdPartyInvite[]
+}
+
+model PasswordPolicy {
+  id               String       @id @default(uuid())
+  organizationId   String
+  name             String
+  isDefault        Boolean      @default(false)
+  minLength        Int          @default(12)
+  maxLength        Int          @default(128)
+  requireUppercase Boolean      @default(true)
+  requireLowercase Boolean      @default(true)
+  requireNumbers   Boolean      @default(true)
+  requireSymbols   Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model Folder {
+  id             String         @id @default(uuid())
+  name           String
+  ownerId        String
+  organizationId String
+  parentFolderId String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  parentFolder   Folder?        @relation("FolderHierarchy", fields: [parentFolderId], references: [id], onDelete: Cascade)
+  subFolders     Folder[]       @relation("FolderHierarchy")
+  secrets        FolderSecret[]
+}
+
+model FolderSecret {
+  folderId String
+  secretId String
+  folder   Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  secret   Secret @relation(fields: [secretId], references: [id], onDelete: Cascade)
+
+  @@id([folderId, secretId])
+}
+
+model SecretVersion {
+  id               String   @id @default(uuid())
+  secretId         String
+  encryptedData    String
+  iv               String
+  encryptedItemKey String
+  createdAt        DateTime @default(now())
+  secret           Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+}
+
+model FileAttachment {
+  id                String   @id @default(uuid())
+  secretId          String
+  originalName      String
+  mimeType          String
+  size              Int
+  encryptedBlobPath String
+  iv                String
+  encryptedItemKey  String
+  createdAt         DateTime @default(now())
+  secret            Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
+}
+
+model SecretShare {
+  id                 String          @id @default(uuid())
+  secretId           String
+  recipientUserId    String
+  permission         SharePermission
+  encryptedItemKey   String
+  createdAt          DateTime        @default(now())
+  groupShareSourceId String?
+  groupShareSource   UserGroup?      @relation(fields: [groupShareSourceId], references: [id])
+  recipientUser      User            @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+  secret             Secret          @relation(fields: [secretId], references: [id], onDelete: Cascade)
+}
+
+model UserGroup {
+  id             String            @id @default(uuid())
+  organizationId String
+  name           String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  sourcedShares  SecretShare[]
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        UserGroupMember[]
+}
+
+model UserGroupMember {
+  userId  String
+  groupId String
+  group   UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, groupId])
+}
+
+model ThirdPartyInvite {
+  id                  String          @id @default(uuid())
+  secretId            String
+  email               String
+  permission          SharePermission
+  tokenHash           String          @unique
+  status              InviteStatus    @default(PENDING)
+  expiresAt           DateTime
+  ephemeralPublicKey  String?
+  encryptedItemKey    String?
+  encryptedPrivateKey String?
+  createdAt           DateTime        @default(now())
+  secret              Secret          @relation(fields: [secretId], references: [id], onDelete: Cascade)
+}
+
+model AccessControlConfig {
+  id                    String                      @id @default(uuid())
+  secretId              String                      @unique
+  minimumApproverCount  Int                         @default(1)
+  autoVoidHours         Int                         @default(24)
+  automaticApprovalRule String?
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+  grantDurationMinutes  Int                         @default(60)
+  approvers             AccessControlApprover[]
+  secret                Secret                      @relation(fields: [secretId], references: [id], onDelete: Cascade)
+  excludedUsers         AccessControlExcludedUser[]
+}
+
+model AccessControlApprover {
+  configId String
+  userId   String
+  config   AccessControlConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([configId, userId])
+}
+
+model AccessControlExcludedUser {
+  configId String
+  userId   String
+  config   AccessControlConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([configId, userId])
+}
+
+model AccessRequest {
+  id               String           @id @default(uuid())
+  secretId         String
+  requesterId      String
+  reason           String
+  timing           String?
+  status           RequestStatus    @default(PENDING)
+  expiresAt        DateTime?
+  voidsAt          DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  encryptedItemKey String?
+  approvals        AccessApproval[]
+  requester        User             @relation(fields: [requesterId], references: [id], onDelete: Cascade)
+  secret           Secret           @relation(fields: [secretId], references: [id], onDelete: Cascade)
+}
+
+model AccessApproval {
+  id         String        @id @default(uuid())
+  requestId  String
+  approverId String
+  decision   String
+  createdAt  DateTime      @default(now())
+  approver   User          @relation(fields: [approverId], references: [id], onDelete: Cascade)
+  request    AccessRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, approverId])
+}
+
+model EmergencyAccessGrant {
+  id                   String                @id @default(uuid())
+  ownerId              String
+  contactId            String
+  sessionValidityHours Int
+  waitingPeriodHours   Int
+  encryptedPrivateKey  String
+  status               EmergencyAccessStatus @default(INACTIVE)
+  waitingPeriodUntil   DateTime?
+  sessionExpiresAt     DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  contact              User                  @relation("EmergencyContact", fields: [contactId], references: [id], onDelete: Cascade)
+  owner                User                  @relation("EmergencyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, contactId])
+}
+
+model BackupConfig {
+  id               String          @id @default(uuid())
+  userId           String          @unique
+  provider         String
+  encryptedToken   String
+  frequency        BackupFrequency @default(WEEKLY)
+  ownedOnly        Boolean         @default(true)
+  nextScheduledRun DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationRule {
+  id             String                    @id @default(uuid())
+  organizationId String
+  name           String
+  eventTypes     String[]
+  recipientType  NotificationRecipientType @default(ALL_ADMINS)
+  timing         NotificationTiming        @default(INSTANT)
+  isEnabled      Boolean                   @default(true)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  specificUsers  NotificationRecipient[]
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model NotificationRecipient {
+  ruleId String
+  userId String
+  rule   NotificationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ruleId, userId])
+}
+
+model FineGrainedControl {
+  id             String                        @id @default(uuid())
+  organizationId String
+  action         String
+  isEnabled      Boolean                       @default(true)
+  createdAt      DateTime                      @default(now())
+  updatedAt      DateTime                      @updatedAt
+  organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  exemptions     FineGrainedControlExemption[]
+
+  @@unique([organizationId, action])
+}
+
+model FineGrainedControlExemption {
+  controlId String
+  userId    String
+  control   FineGrainedControl @relation(fields: [controlId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([controlId, userId])
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String?
+  action         String
+  resourceType   String?
+  resourceId     String?
+  details        String?
+  ipAddress      String?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt])
+}
+
+model ReportCache {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  data           String
+  generatedAt    DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
 
 enum OrganizationType {
@@ -67,389 +477,14 @@ enum BackupFrequency {
   WEEKLY
 }
 
-model Organization {
-  id          String           @id @default(uuid())
-  name        String
-  type        OrganizationType
-  mfaEnforced Boolean          @default(false)
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-
-  users       User[]
-  invitations Invitation[]
-  secrets     Secret[]
-  policies    PasswordPolicy[]
-  folders     Folder[]
-  userGroups  UserGroup[]
-  samlApps    SAMLApp[]
-  notificationRules NotificationRule[]
-  fineGrainedControls FineGrainedControl[]
-  auditLogs     AuditLog[]
-  reportCache   ReportCache?
-
-  // Optional keys for SAML Identity Provider
-  samlPrivateKey  String?
-  samlCertificate String?
-}
-
-model User {
-  id                  String     @id @default(uuid())
-  organizationId      String
-  email               String     @unique
-  name                String?
-  avatarUrl           String?
-  loginPassword       String     // Argon2 hash
-  publicKey           String     // RSA public key
-  encryptedPrivateKey String     // RSA private key encrypted with AES-256-GCM
-  role                Role       @default(USER)
-  status              UserStatus @default(ACTIVE)
-  
-  // MFA
-  mfaType             MfaType    @default(NONE)
-  mfaSecret           String?    // Nullable TOTP secret
-
-  // Password Reset
-  passwordResetToken  String?
-  passwordResetExpires DateTime?
-
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
-
-  organization        Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  refreshTokens       RefreshToken[]
-  secrets             Secret[]
-  folders             Folder[]
-  sharesReceived      SecretShare[]
-  groupMemberships    UserGroupMember[]
-  accessRequests      AccessRequest[]
-  accessApprovals     AccessApproval[]
-  accessControlApprover AccessControlApprover[]
-  accessControlExcluded AccessControlExcludedUser[]
-  emergencyGrantsGiven    EmergencyAccessGrant[] @relation("EmergencyOwner")
-  emergencyGrantsReceived EmergencyAccessGrant[] @relation("EmergencyContact")
-  samlAppAccesses         SAMLAppAccess[]
-  backupConfig            BackupConfig?
-  notificationRules       NotificationRecipient[]
-  controlExemptions       FineGrainedControlExemption[]
-  auditLogs               AuditLog[]
-}
-
-model SAMLApp {
-  id             String          @id @default(uuid())
-  organizationId String
-  name           String
-  description    String?
-  acsUrl         String          // Assertion Consumer Service URL
-  audienceUri    String          // Entity ID / Audience URI
-  isEnabled      Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  accesses       SAMLAppAccess[]
-}
-
-model SAMLAppAccess {
-  id        String   @id @default(uuid())
-  appId     String
-  userId    String
-  createdAt DateTime @default(now())
-
-  app       SAMLApp  @relation(fields: [appId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([appId, userId])
-}
-
-model RefreshToken {
-  id              String   @id @default(uuid())
-  tokenHash       String   @unique
-  userId          String
-  familyId        String   // Links rotated tokens together
-  isRevoked       Boolean  @default(false)
-  replacedByToken String?  // Stores the new tokenHash if rotated
-  expiresAt       DateTime
-  createdAt       DateTime @default(now())
-
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([tokenHash])
-}
-
-model Invitation {
-  id              String       @id @default(uuid())
-  email           String       @unique
-  organizationId  String
-  role            Role         @default(USER)
-  tokenHash       String       @unique
-  status          InviteStatus @default(PENDING)
-  expiresAt       DateTime
-  createdAt       DateTime     @default(now())
-
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-}
-
 enum TemplateType {
   WEBSITE
   SERVER
   UNIX
   WINDOWS
   LICENSE
-  DATABASE
   CUSTOM
-}
-
-model Secret {
-  id                   String       @id @default(uuid())
-  ownerId              String
-  organizationId       String
-  templateType         TemplateType
-  name                 String
-  domain               String?
-  encryptedData        String       // Ciphertext payload (base64)
-  iv                   String       // Initialization Vector (base64)
-  encryptedItemKey     String       // AES ItemKey encrypted with owner's RSA Public Key (base64)
-  isPersonal           Boolean      @default(false)
-  accessControlEnabled Boolean      @default(false)
-  passwordScore        Int          @default(0)
-  isWeak               Boolean      @default(false)
-  isReused             Boolean      @default(false)
-  containsUsername     Boolean      @default(false)
-  isDictionaryWord     Boolean      @default(false)
-  isRecycled           Boolean      @default(false)
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-
-  owner                User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  
-  folders              FolderSecret[]
-  versions             SecretVersion[]
-  attachments          FileAttachment[]
-  shares               SecretShare[]
-  thirdPartyInvites    ThirdPartyInvite[]
-  accessControlConfig  AccessControlConfig?
-  accessRequests       AccessRequest[]
-}
-
-model PasswordPolicy {
-  id               String       @id @default(uuid())
-  organizationId   String
-  name             String
-  isDefault        Boolean      @default(false)
-  minLength        Int          @default(12)
-  maxLength        Int          @default(128)
-  requireUppercase Boolean      @default(true)
-  requireLowercase Boolean      @default(true)
-  requireNumbers   Boolean      @default(true)
-  requireSymbols   Boolean      @default(true)
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-}
-
-model Folder {
-  id             String         @id @default(uuid())
-  name           String
-  ownerId        String
-  organizationId String
-  parentFolderId String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  owner          User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  parentFolder   Folder?        @relation("FolderHierarchy", fields: [parentFolderId], references: [id], onDelete: Cascade)
-  subFolders     Folder[]       @relation("FolderHierarchy")
-  secrets        FolderSecret[]
-}
-
-model FolderSecret {
-  folderId String
-  secretId String
-  
-  folder   Folder @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  secret   Secret @relation(fields: [secretId], references: [id], onDelete: Cascade)
-
-  @@id([folderId, secretId])
-}
-
-model SecretVersion {
-  id               String   @id @default(uuid())
-  secretId         String
-  encryptedData    String
-  iv               String
-  encryptedItemKey String
-  createdAt        DateTime @default(now())
-
-  secret           Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
-}
-
-model FileAttachment {
-  id                 String   @id @default(uuid())
-  secretId           String
-  originalName       String
-  mimeType           String
-  size               Int
-  encryptedBlobPath  String
-  iv                 String
-  encryptedItemKey   String
-  createdAt          DateTime @default(now())
-
-  secret             Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
-}
-
-model SecretShare {
-  id                 String          @id @default(uuid())
-  secretId           String
-  recipientUserId    String
-  groupShareSourceId String?
-  permission         SharePermission
-  encryptedItemKey   String
-  createdAt          DateTime        @default(now())
-
-  secret             Secret          @relation(fields: [secretId], references: [id], onDelete: Cascade)
-  recipientUser      User            @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
-  groupShareSource   UserGroup?      @relation(fields: [groupShareSourceId], references: [id], onDelete: SetNull)
-}
-
-model UserGroup {
-  id             String            @id @default(uuid())
-  organizationId String
-  name           String
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-
-  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  members        UserGroupMember[]
-  sourcedShares  SecretShare[]
-}
-
-model UserGroupMember {
-  userId  String
-  groupId String
-
-  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group   UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-
-  @@id([userId, groupId])
-}
-
-model ThirdPartyInvite {
-  id                  String          @id @default(uuid())
-  secretId            String
-  email               String
-  permission          SharePermission
-  tokenHash           String          @unique
-  status              InviteStatus    @default(PENDING)
-  expiresAt           DateTime
-  ephemeralPublicKey  String?
-  encryptedItemKey    String?
-  encryptedPrivateKey String?
-  createdAt           DateTime        @default(now())
-
-  secret              Secret          @relation(fields: [secretId], references: [id], onDelete: Cascade)
-}
-
-model AccessControlConfig {
-  id                    String   @id @default(uuid())
-  secretId              String   @unique
-  minimumApproverCount  Int      @default(1)
-  autoVoidHours         Int      @default(24)
-  grantDurationMinutes  Int      @default(60)
-  automaticApprovalRule String?  // Optional JSON or string enum
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  secret                Secret   @relation(fields: [secretId], references: [id], onDelete: Cascade)
-  approvers             AccessControlApprover[]
-  excludedUsers         AccessControlExcludedUser[]
-}
-
-model AccessControlApprover {
-  configId String
-  userId   String
-
-  config   AccessControlConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([configId, userId])
-}
-
-model AccessControlExcludedUser {
-  configId String
-  userId   String
-
-  config   AccessControlConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
-  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([configId, userId])
-}
-
-model AccessRequest {
-  id             String        @id @default(uuid())
-  secretId       String
-  requesterId    String
-  reason         String
-  timing         String?       // IMMEDIATE or Scheduled date
-  status         RequestStatus @default(PENDING)
-  expiresAt      DateTime?     // When granted access ends
-  voidsAt        DateTime?     // When unanswered request auto-voids
-  encryptedItemKey String?     // Provided by the final approver
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-
-  secret         Secret        @relation(fields: [secretId], references: [id], onDelete: Cascade)
-  requester      User          @relation(fields: [requesterId], references: [id], onDelete: Cascade)
-  approvals      AccessApproval[]
-}
-
-model AccessApproval {
-  id             String        @id @default(uuid())
-  requestId      String
-  approverId     String
-  decision       String        // APPROVED or DENIED
-  createdAt      DateTime      @default(now())
-
-  request        AccessRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  approver       User          @relation(fields: [approverId], references: [id], onDelete: Cascade)
-
-  @@unique([requestId, approverId])
-}
-
-model EmergencyAccessGrant {
-  id                  String   @id @default(uuid())
-  ownerId             String
-  contactId           String
-  sessionValidityHours Int
-  waitingPeriodHours  Int
-  encryptedPrivateKey String
-  status              EmergencyAccessStatus @default(INACTIVE)
-  waitingPeriodUntil  DateTime?
-  sessionExpiresAt    DateTime?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-
-  owner               User     @relation("EmergencyOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  contact             User     @relation("EmergencyContact", fields: [contactId], references: [id], onDelete: Cascade)
-
-  @@unique([ownerId, contactId])
-}
-
-model BackupConfig {
-  id               String          @id @default(uuid())
-  userId           String          @unique
-  provider         String
-  encryptedToken   String
-  frequency        BackupFrequency @default(WEEKLY)
-  ownedOnly        Boolean         @default(true)
-  nextScheduledRun DateTime?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-
-  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  DATABASE
 }
 
 enum NotificationRecipientType {
@@ -460,79 +495,4 @@ enum NotificationRecipientType {
 enum NotificationTiming {
   INSTANT
   DAILY_DIGEST
-}
-
-model NotificationRule {
-  id              String                   @id @default(uuid())
-  organizationId  String
-  name            String
-  eventTypes      String[]                 // JSON or array of strings, e.g., ["SHARE_CREATED", "BACKUP_FAILED"]
-  recipientType   NotificationRecipientType @default(ALL_ADMINS)
-  timing          NotificationTiming       @default(INSTANT)
-  isEnabled       Boolean                  @default(true)
-  createdAt       DateTime                 @default(now())
-  updatedAt       DateTime                 @updatedAt
-
-  organization    Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  specificUsers   NotificationRecipient[]
-}
-
-model NotificationRecipient {
-  ruleId String
-  userId String
-
-  rule   NotificationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([ruleId, userId])
-}
-
-model FineGrainedControl {
-  id             String                        @id @default(uuid())
-  organizationId String
-  action         String                        // e.g., "EXPORT_SECRETS", "THIRD_PARTY_SHARING"
-  isEnabled      Boolean                       @default(true) // If true, action is BLOCKED/CONTROLLED
-  createdAt      DateTime                      @default(now())
-  updatedAt      DateTime                      @updatedAt
-
-  organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  exemptions     FineGrainedControlExemption[]
-
-  @@unique([organizationId, action])
-}
-
-model FineGrainedControlExemption {
-  controlId String
-  userId    String
-
-  control   FineGrainedControl @relation(fields: [controlId], references: [id], onDelete: Cascade)
-  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([controlId, userId])
-}
-
-model AuditLog {
-  id             String       @id @default(uuid())
-  organizationId String
-  userId         String?      // Could be null if unauthenticated system event
-  action         String       // e.g., "USER_LOGIN", "SECRET_CREATED"
-  resourceType   String?      // e.g., "Secret", "User"
-  resourceId     String?
-  details        String?      // JSON string of extra context
-  ipAddress      String?
-  createdAt      DateTime     @default(now())
-
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([organizationId, createdAt])
-}
-
-model ReportCache {
-  id             String       @id @default(uuid())
-  organizationId String       @unique
-  data           String       // JSON blob of all 6 report types
-  generatedAt    DateTime     @default(now())
-
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }

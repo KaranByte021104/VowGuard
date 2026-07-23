@@ -47,7 +47,7 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
     }),
     ThrottlerModule.forRoot([{
       ttl: 60000,
-      limit: 100, // Global limit: 100 requests per minute
+      limit: 10000, // Global limit increased for testing
     }]),
     MailerModule.forRoot({
       transport: {

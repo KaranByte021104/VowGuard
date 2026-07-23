@@ -50,9 +50,22 @@ export class BackupService {
     const config = await this.prisma.backupConfig.findUnique({ where: { userId } });
     if (!config) throw new NotFoundException('Backup config not found');
     
+    let nextScheduledRun = config.nextScheduledRun;
+    
+    if (frequency !== config.frequency && config.nextScheduledRun) {
+      const now = new Date();
+      if (frequency === 'DAILY') {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        if (config.nextScheduledRun > tomorrow) {
+          nextScheduledRun = tomorrow;
+        }
+      }
+    }
+
     return this.prisma.backupConfig.update({
       where: { userId },
-      data: { frequency, ownedOnly }
+      data: { frequency, ownedOnly, nextScheduledRun }
     });
   }
 

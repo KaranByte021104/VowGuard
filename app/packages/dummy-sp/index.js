@@ -75,9 +75,31 @@ app.get('/', (req, res) => {
         <h1>Dummy Service Provider</h1>
         <p>This is a testing fixture for SecureVault SAML IdP.</p>
         <p>You must initiate the login from the SecureVault dashboard.</p>
+        <br>
+        <a href="/login-test">Go to dummy password login test page</a>
       </body>
     </html>
   `);
+});
+
+app.get('/login-test', (req, res) => {
+  res.send(`
+    <html>
+      <body style="font-family: sans-serif; text-align: center; padding: 50px;">
+        <h1>Test Extension Password Saving</h1>
+        <p>Fill out this dummy form to trigger the VowGuard extension save prompt.</p>
+        <form action="/login-test" method="POST" style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 20px;">
+          <input type="text" name="username" placeholder="Username" style="padding: 10px; width: 250px;" />
+          <input type="password" name="password" placeholder="Password" style="padding: 10px; width: 250px;" />
+          <button type="submit" style="padding: 10px 20px; cursor: pointer;">Login</button>
+        </form>
+      </body>
+    </html>
+  `);
+});
+
+app.post('/login-test', (req, res) => {
+  res.send('Form submitted! The extension should have caught this.');
 });
 
 const PORT = 4000;

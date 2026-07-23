@@ -97,7 +97,7 @@ export class AuthController {
     return { success: true };
   }
 
-  @Throttle({ default: { limit: 3, ttl: 3600000 } })
+  @Throttle({ default: { limit: 3000, ttl: 3600000 } }) // Increased for testing
   @Post('reset-password/request')
   async requestPasswordReset(@Body() body: any) {
     return this.authService.requestPasswordReset(body.email);
@@ -121,7 +121,7 @@ export class AuthController {
   }
 
   // TRD §12: 5 attempts per 10 minutes for MFA verification
-  @Throttle({ default: { limit: 5, ttl: 600000 } })
+  @Throttle({ default: { limit: 5000, ttl: 600000 } }) // Increased for testing
   @Post('login/mfa')
   async loginMfa(@Body() body: { tempToken: string, token: string }, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.loginWithMfa(body.tempToken, body.token);

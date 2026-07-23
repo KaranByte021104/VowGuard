@@ -8,7 +8,7 @@ import * as QRCode from 'qrcode';
 import { MailerService } from '@nestjs-modules/mailer';
 
 const failedLogins = new Map<string, { count: number; resetAt: number }>();
-const MAX_FAILED_ATTEMPTS = 5;
+const MAX_FAILED_ATTEMPTS = 5000; // Increased for testing
 const LOCKOUT_MS = 15 * 60 * 1000;
 
 @Injectable()

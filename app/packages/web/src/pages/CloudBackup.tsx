@@ -211,7 +211,7 @@ export function CloudBackup() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-card rounded-xl shadow-sm border border-border p-6 space-y-6">
+          <div className="bg-card rounded-xl shadow-sm border border-border p-6 space-y-6 h-fit">
             <div className="flex items-center justify-between pb-4 border-b border-border">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-status-success/20 rounded-full text-status-success">
@@ -271,7 +271,13 @@ export function CloudBackup() {
 
             <div className="pt-4 border-t border-border flex items-center gap-2 text-sm text-muted-foreground">
               <Clock className="w-4 h-4" />
-              <span>Next Run: {config.nextScheduledRun ? new Date(config.nextScheduledRun).toLocaleString() : 'Pending'}</span>
+              <span>Next Run: {
+                config.nextScheduledRun 
+                  ? (new Date(config.nextScheduledRun) < new Date() 
+                      ? `${new Date(config.nextScheduledRun).toLocaleString()} (Overdue - Check connection)` 
+                      : new Date(config.nextScheduledRun).toLocaleString()) 
+                  : 'Pending'
+              }</span>
             </div>
           </div>
 

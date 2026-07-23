@@ -38,13 +38,15 @@ export function AdminControls() {
     apiFetch('http://localhost:3000/controls', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
-        const updatedControls: Control[] = data.map((c: any) => ({
-          id: c.action,
-          action: c.action,
-          isEnabled: c.isEnabled,
-          description: descs[c.action] || `Block ${c.action}`,
-          exemptions: c.exemptions || []
-        }));
+        const updatedControls: Control[] = data
+          .filter((c: any) => c.action !== 'OFFLINE_ACCESS')
+          .map((c: any) => ({
+            id: c.action,
+            action: c.action,
+            isEnabled: c.isEnabled,
+            description: descs[c.action] || `Block ${c.action}`,
+            exemptions: c.exemptions || []
+          }));
         setControls(updatedControls);
       })
       .catch(console.error);
